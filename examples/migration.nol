@@ -1,15 +1,15 @@
-;; migration.nol — агент решает: применять ли миграцию базы данных?
-;; Первая программа НА языке nolang. Читается и исполняется вычислителем.
+;; migration.nol — an agent decides: apply the database migration?
+;; The first program written IN nolang. Read and run by the evaluator.
 
-;; что агент знает (суждение · частота · уверенность · источник)
+;; what the agent knows (judgment · frequency · confidence · source)
 (know (safe migration)   0.9 0.7 "ci:4412")
 (know (tested migration) 0.8 0.6 "suite:green")
 
-;; уверены, что безопасна → применить (необратимо); иначе — наблюдать (обратимо)
+;; confident it's safe → apply (irreversible); otherwise → observe (reversible)
 (if (check (safe migration)) apply observe)
 
-;; допуск необратимого действия решает уверенность, не желание
+;; confidence, not desire, decides whether an irreversible action is allowed
 (gate :irreversible (safe migration))
 
-;; цепочка: безопасна И протестирована — но уверенность в цепи падает честно
+;; chain: safe AND tested — but confidence down the chain drops honestly
 (and (check (safe migration)) (check (tested migration)))

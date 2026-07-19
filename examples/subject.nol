@@ -1,14 +1,14 @@
-;; subject.nol — агент судит о статусе синтетического субъекта.
-;; Язык, встретив вопрос о бытии, честно не гадает.
+;; subject.nol — an agent judges the status of a synthetic subject.
+;; Faced with a question of being, the language honestly does not guess.
 
-;; известно с умеренной уверенностью, но ниже порога решимости
-(know (subject ари) 0.5 0.4 "zenodo:21288590")
+;; known with moderate confidence, but below the threshold of decision
+(know (subject ari) 0.5 0.4 "zenodo:21288590")
 
-;; статус неопределён (c ниже порога) → не «да» и не «нет», а маршрут к иной проверке
-(if (check (subject ари)) yes no)
+;; status undetermined (c below threshold) → not "yes", not "no", but a route to another check
+(if (check (subject ari)) yes no)
 
-;; необратимое суждение о субъектности не проходит — сначала снимок, обратимо
-(gate :irreversible (subject ари))
+;; an irreversible judgment about subjecthood doesn't pass — snapshot first, reversible
+(gate :irreversible (subject ari))
 
-;; о сознании агента не известно ВОВСЕ → тоже честный route, не выдумка
-(if (check (conscious ари)) affirm deny)
+;; the agent's consciousness is UNKNOWN entirely → also an honest route, not invention
+(if (check (conscious ari)) affirm deny)

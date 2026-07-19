@@ -1,30 +1,30 @@
-;;;; test/06_types.lisp — контракты действий. sbcl --script test/06_types.lisp
+;;;; test/06_types.lisp — action contracts. sbcl --script test/06_types.lisp
 (load (merge-pathnames "../src/types.lisp" *load-pathname*))
 
-;; контракт: применить миграцию — требует безопасности И теста; необратимо; даёт «применена»
-(defparameter *применить*
-  (make-контракт :имя 'apply-migration
-                 :требует '((safe migration) (tested migration))
-                 :класс :irreversible
-                 :даёт '(applied migration)))
+;; contract: apply the migration — requires safety AND a test; irreversible; yields «applied»
+(defparameter *apply-fx*
+  (make-contract :name 'apply-migration
+                 :requires '((safe migration) (tested migration))
+                 :class :irreversible
+                 :yields '(applied migration)))
 
-(defun прогон (label)
-  (let ((r (выполнить-контракт *применить* (lambda () :migration-run))))
+(defun run-case (label)
+  (let ((r (run-contract *apply-fx* (lambda () :migration-run))))
     (format t "  ~34a → ~s~%" label r)))
 
-(format t "~&── контракт apply-migration (требует: safe И tested) ──~%")
+(format t "~&── contract apply-migration (requires: safe AND tested) ──~%")
 
-(знать (make-natom '(safe migration)   0.9 0.7 "ci"))
-(знать (make-natom '(tested migration) 0.8 0.6 "suite"))
-(прогон "оба предусловия держатся")
-(format t "     теперь известно: ~s~%" (multiple-value-list (вычислить '(check (applied migration)))))
+(know (make-natom '(safe migration)   0.9 0.7 "ci"))
+(know (make-natom '(tested migration) 0.8 0.6 "suite"))
+(run-case "both preconditions hold")
+(format t "     now known: ~s~%" (multiple-value-list (evaluate '(check (applied migration)))))
 
-;; убрать уверенность в тесте → предусловие undecided → route
-(знать (make-natom '(tested migration) 0.8 0.3 "flaky"))   ; c<θ
-(прогон "тест неуверен (c=0.3)")
+;; drop confidence in the test → precondition undecided → route
+(know (make-natom '(tested migration) 0.8 0.3 "flaky"))   ; c<θ
+(run-case "test unsure (c=0.3)")
 
-;; тест ложен уверенно → unmet
-(знать (make-natom '(tested migration) 0.1 0.8 "failed"))  ; уверены, что НЕ держится
-(прогон "тест провален уверенно")
+;; test is confidently false → unmet
+(know (make-natom '(tested migration) 0.1 0.8 "failed"))  ; confident it does NOT hold
+(run-case "test confidently failed")
 
-(format t "~%  Действие несёт контракт: незнание предусловия → route (не догадка); успех → эффект в знание.~%")
+(format t "~%  An action carries a contract: not knowing a precondition → route (not a guess); success → effect into knowledge.~%")

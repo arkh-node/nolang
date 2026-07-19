@@ -1,25 +1,25 @@
-;;;; test/07_nars.lisp — язык отдаёт вывод рассуждающему субстрату. sbcl --script test/07_nars.lisp
+;;;; test/07_nars.lisp — the language hands off inference to a reasoning substrate. sbcl --script test/07_nars.lisp
 (load (merge-pathnames "../src/nars.lisp" *load-pathname*))
 
-(format t "~&── nolang отдаёт тяжёлый вывод NARS, получает выведенный атом ──~%")
+(format t "~&── nolang hands off the heavy inference to NARS, gets a derived atom ──~%")
 
-;; nolang ЗНАЕТ два суждения; вывода между ними САМ не делает
-(defparameter *факты*
+;; nolang KNOWS two judgments; it does NOT derive the conclusion between them itself
+(defparameter *facts*
   (list (make-natom '(isa socrates human)  0.9 0.9 "biography")
         (make-natom '(isa human mortal)    0.9 0.9 "aristotle")))
 
-(format t "  знаю: ~a~%" (->narsese (first *факты*)))
-(format t "  знаю: ~a~%" (->narsese (second *факты*)))
+(format t "  know: ~a~%" (->narsese (first *facts*)))
+(format t "  know: ~a~%" (->narsese (second *facts*)))
 
-;; спрашиваю вывод, которого сам не выводил
-(let ((r (nars-спросить *факты* '(isa socrates mortal))))
-  (format t "~%  спросил NARS:  (isa socrates mortal)?~%")
-  (format t "  NARS вывел:    ~s  (f=~,3f c=~,3f)  ← ~a~%"
+;; ask for the conclusion it did not derive itself
+(let ((r (nars-ask *facts* '(isa socrates mortal))))
+  (format t "~%  asked NARS:   (isa socrates mortal)?~%")
+  (format t "  NARS derived: ~s  (f=~,3f c=~,3f)  ← ~a~%"
           (natom-judgment r) (natom-f r) (natom-c r) (natom-trace r)))
 
-;; чего не следует — NARS не выдумает (низкая уверенность / нет ответа)
-(let ((r (nars-спросить *факты* '(isa socrates dog))))
-  (format t "~%  спросил NARS:  (isa socrates dog)?~%")
-  (format t "  ответ:         (f=~,3f c=~,3f)  ← ~a~%" (natom-f r) (natom-c r) (natom-trace r)))
+;; what does not follow — NARS won't invent (low confidence / no answer)
+(let ((r (nars-ask *facts* '(isa socrates dog))))
+  (format t "~%  asked NARS:   (isa socrates dog)?~%")
+  (format t "  answer:       (f=~,3f c=~,3f)  ← ~a~%" (natom-f r) (natom-c r) (natom-trace r)))
 
-(format t "~%  Язык не имитирует рассуждение — отдаёт его субстрату. (f,c) ↔ NARS truth, одна пара по обе стороны.~%")
+(format t "~%  The language does not imitate reasoning — it hands it off to the substrate. (f,c) ↔ NARS truth, one pair on both sides.~%")

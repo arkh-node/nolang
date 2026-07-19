@@ -1,25 +1,25 @@
-;;;; nolang src 04 — nol. Ридер и исполнитель программ .nol.
-;;;; Язык homoiconic: .nol-файл = s-выражения. know объявляет знание; прочее — вычисляется.
-;;;; Так nolang исполняет САМ СЕБЯ, а не наши Lisp-функции.
+;;;; nolang src — nol. Reader and runner for .nol programs.
+;;;; Homoiconic: a .nol file is s-expressions. `know` declares knowledge; the rest is evaluated.
+;;;; This is how nolang runs ITSELF, not our Lisp functions.
 
-(load (merge-pathnames "eval.lisp" *load-pathname*))   ; atom+gate+return? нет — eval тянет gate→atom
+(load (merge-pathnames "eval.lisp" *load-pathname*))   ; atom+gate+return? no — eval pulls gate→atom
 
-(defun показ-результата (r)
-  (cond ((natom-p r) (format nil "суждение ~s  (f=~a c=~a)"
+(defun show-result (r)
+  (cond ((natom-p r) (format nil "judgment ~s  (f=~a c=~a)"
                              (natom-judgment r) (natom-f r) (natom-c r)))
         (t (format nil "~s" r))))
 
-(defun выполнить-nol (путь)
-  "Прочитать программу .nol и исполнить: know → в базу знаний; выражение → вычислить и показать с провенансом."
-  (format t "~&═══ ~a ═══~%" (file-namestring путь))
-  (with-open-file (s путь :external-format :utf-8)
-    (loop for форма = (read s nil :конец)
-          until (eq форма :конец) do
-      (if (and (consp форма) (eq (first форма) 'know))
-          (destructuring-bind (j f c tr) (rest форма)
-            (знать (make-natom j f c tr))
-            (format t "  · знаю  ~s   (~a . ~a)~%" j f c))
-          (multiple-value-bind (r tr) (вычислить форма)
+(defun run-nol (path)
+  "Read and run a .nol program: know → into the knowledge base; an expression → evaluate and show with provenance."
+  (format t "~&═══ ~a ═══~%" (file-namestring path))
+  (with-open-file (s path :external-format :utf-8)
+    (loop for form = (read s nil :eof)
+          until (eq form :eof) do
+      (if (and (consp form) (eq (first form) 'know))
+          (destructuring-bind (j f c tr) (rest form)
+            (know (make-natom j f c tr))
+            (format t "  · know  ~s   (~a . ~a)~%" j f c))
+          (multiple-value-bind (r tr) (evaluate form)
             (format t "  ▸ ~s~%      = ~a~@[   ⟨~{~a~^, ~}⟩~]~%"
-                    форма (показ-результата r) tr)))))
+                    form (show-result r) tr)))))
   (format t "~%"))

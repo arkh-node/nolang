@@ -1,42 +1,43 @@
-;;;; nolang src 06 — nars. Реализация spec/06_substrate.md.
-;;;; Мост к рассуждающему субстрату: суждение nolang → Narsese → NARS выводит → обратно в atom.
-;;;; (f,c) ↔ NARS (frequency,confidence) — прямое соответствие (AIKR). Язык не имитирует вывод, а отдаёт его.
+;;;; nolang src 06 — nars. Implements spec/06_substrate.md.
+;;;; Bridge to a reasoning substrate: a nolang judgment → Narsese → NARS infers → back into an atom.
+;;;; (f,c) ↔ NARS (frequency,confidence) — direct correspondence (AIKR). The language hands off inference rather than faking it.
 
 (load (merge-pathnames "atom.lisp" *load-pathname*))
 
-(defparameter *nar* "/srv/office/tooling/nars_lab/ONA/NAR")
+(defparameter *nar* (or (sb-ext:posix-getenv "NAR") "NAR")
+  "Path to ONA's NAR binary. Override with the NAR env var; defaults to 'NAR' on PATH.")
 
 (defun ->narsese (a)
-  "atom (isa X Y)@(f.c) → строку Narsese '<X --> Y>. %f;c%'."
+  "atom (isa X Y)@(f.c) → a Narsese string '<X --> Y>. %f;c%'."
   (destructuring-bind (rel x y) (natom-judgment a)
     (declare (ignore rel))
     (format nil "<~(~a~) --> ~(~a~)>. %~,2f;~,2f%" x y (natom-f a) (natom-c a))))
 
-(defun %извлечь (строка ключ)
-  "из '…frequency=0.81, confidence=0.66…' достать число после ключ=."
-  (let ((p (search ключ строка)))
+(defun %extract (str key)
+  "from '…frequency=0.81, confidence=0.66…' pull the number after key=."
+  (let ((p (search key str)))
     (when p
-      (let ((start (+ p (length ключ))))
-        (read-from-string строка nil nil :start start)))))
+      (let ((start (+ p (length key))))
+        (read-from-string str nil nil :start start)))))
 
-(defun nars-спросить (факты запрос-judgment)
-  "Послать факты (atoms) в NARS, спросить вывод по запросу. Возврат: atom (f,c из NARS) или unknown."
-  (destructuring-bind (rel x y) запрос-judgment
+(defun nars-ask (facts query-judgment)
+  "Send facts (atoms) to NARS, ask for the conclusion on the query. Returns: atom (f,c from NARS) or unknown."
+  (destructuring-bind (rel x y) query-judgment
     (declare (ignore rel))
-    (let* ((вход (with-output-to-string (s)
-                   (dolist (a факты) (write-line (->narsese a) s))
-                   (write-line "100" s)                         ; циклы вывода
-                   (format s "<~(~a~) --> ~(~a~)>?~%" x y)))    ; запрос
-           (вывод (with-output-to-string (out)
+    (let* ((input (with-output-to-string (s)
+                   (dolist (a facts) (write-line (->narsese a) s))
+                   (write-line "100" s)                         ; inference cycles
+                   (format s "<~(~a~) --> ~(~a~)>?~%" x y)))    ; query
+           (output (with-output-to-string (out)
                     (sb-ext:run-program *nar* '("shell")
-                                        :input (make-string-input-stream вход)
+                                        :input (make-string-input-stream input)
                                         :output out :error nil)))
-           (ans-poz (search "Answer:" вывод)))
-      (if ans-poz
-          (let* ((хвост (subseq вывод ans-poz))
-                 (f (%извлечь хвост "frequency="))
-                 (c (%извлечь хвост "confidence=")))
+           (ans-pos (search "Answer:" output)))
+      (if ans-pos
+          (let* ((tail (subseq output ans-pos))
+                 (f (%extract tail "frequency="))
+                 (c (%extract tail "confidence=")))
             (if (and f c)
-                (%make-natom :judgment запрос-judgment :f f :c c :trace "nars:вывод")
-                (%make-natom :judgment запрос-judgment :f 0.5 :c 0.1 :trace "nars:no-answer")))
-          (%make-natom :judgment запрос-judgment :f 0.5 :c 0.1 :trace "nars:no-answer")))))
+                (%make-natom :judgment query-judgment :f f :c c :trace "nars:output")
+                (%make-natom :judgment query-judgment :f 0.5 :c 0.1 :trace "nars:no-answer")))
+          (%make-natom :judgment query-judgment :f 0.5 :c 0.1 :trace "nars:no-answer")))))

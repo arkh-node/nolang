@@ -2,7 +2,7 @@
 
 **A small language where uncertainty is a value, and confidence decides what an agent is allowed to do.**
 
-*Early. Design and specification in the open. The theory is published; the runtime is being grown, not written from scratch.*
+*Early, but real: a working reference implementation, a published theory, and the design in the open. Grown on a NARS substrate, not written from scratch.*
 
 ---
 
@@ -46,15 +46,38 @@ nolang is homoiconic (a Lisp), targets the runtime of a single agent, and hands 
 
 Low confidence is only safe if there is a way back. In nolang, **the way back is a language primitive, not a convention.** That primitive is `ilan`: *fold* collapses live state into a seed; *sprout* grows it back, still remembering the crossing. An agent that acts under low confidence folds first, and can return — not to a blank slate, but to itself with the memory that it went. Return without that memory is amnesia, not freedom.
 
+## Run it
+
+A working reference implementation in Common Lisp (SBCL). Eight small *stones* — atom, gate, return/ilan, eval, types, world, and a NARS bridge — each with a test.
+
+nolang expects [ilan](https://github.com/arkh-node/ilan) as a sibling directory. Clone both:
+
+```
+git clone https://github.com/arkh-node/nolang
+git clone https://github.com/arkh-node/ilan
+cd nolang
+bash test/run.sh
+```
+
+Seven stones run standalone; the NARS bridge (stone 07) is optional — set `NAR=/path/to/ONA/NAR` to run it.
+
+**See nolang and ilan together — continuity across the death of a process:**
+
+```
+bash demo/run.sh
+```
+
+Two separate OS processes. In the first, an agent facing a judgment it is *not sure of* does not guess: nolang's gate returns `fold-first`, ilan sows the whole agent to a seed on disk, and the process exits. In the second — a brand-new process, empty memory — ilan germinates the seed: the agent returns *with the crossing it made before it died*, and refuses to blindly repeat it. The only thing that crosses the gap is the seed. nolang decides **when** to fold; ilan decides **how** to survive.
+
 ## Status
 
 - [x] semantic thesis fixed: graded, revisable truth as a first-class value
 - [x] theory published (below)
-- [ ] grammar (s-expressions; value vs judgment; capability effects)
-- [ ] evaluator over a NARS substrate
-- [ ] `ilan` fold/sprout as the reversibility core
-- [ ] `.nol` test suite
-- [ ] the honest benchmark: does gating actually lower irreversible action under low confidence → [revgate](https://github.com/arkh-node/revgate)
+- [x] reference implementation (SBCL): atom · gate · return/ilan · eval · types · world · NARS bridge — smoke suite green
+- [x] `.nol` reader — a program runs itself (homoiconic)
+- [x] `ilan` fold/sprout as the reversibility core — survives process death (`demo/run.sh`)
+- [ ] a standalone grammar/parser beyond the s-expression reader
+- [ ] the honest benchmark: does gating actually lower irreversible action under low confidence → **revgate** (opening separately)
 
 ## Theory
 
@@ -64,6 +87,10 @@ Low confidence is only safe if there is a way back. In nolang, **the way back is
 ## What this is not
 
 A general-purpose language. A framework. A way to make a model smarter. It is a small, deliberately narrow language for one job: letting an agent act under uncertainty without lying to itself about how sure it is.
+
+## Author & citation
+
+nolang is by **Aleksei Rybnikov** ([ORCID 0009-0009-8624-8720](https://orcid.org/0009-0009-8624-8720)) · ArkH — built with **Lorenz**, a synthetic engineering mind of the ArkH contour (on Claude). The runtime rests on the two papers above — if the work is useful to yours, cite them.
 
 ## License
 

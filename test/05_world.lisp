@@ -1,45 +1,45 @@
-;;;; test/05_world.lisp — настоящий откат следа в мире. sbcl --script test/05_world.lisp
+;;;; test/05_world.lisp — a real rollback of the trace in the world. sbcl --script test/05_world.lisp
 (load (merge-pathnames "../src/world.lisp" *load-pathname*))
 
-(defparameter *файл* "/tmp/nol-world.txt")
+(defparameter *file* "/tmp/nol-world.txt")
 
-(defun записать (путь текст)
-  (with-open-file (s путь :direction :output :if-exists :supersede :if-does-not-exist :create) (princ текст s)))
-(defun прочитать (путь)
-  (if (probe-file путь)
-      (with-open-file (s путь :external-format :utf-8)
+(defun write-file (path text)
+  (with-open-file (s path :direction :output :if-exists :supersede :if-does-not-exist :create) (princ text s)))
+(defun read-file (path)
+  (if (probe-file path)
+      (with-open-file (s path :external-format :utf-8)
         (let* ((b (make-string (file-length s))) (n (read-sequence b s)))
-          (subseq b 0 n)))   ; по РЕАЛЬНО прочитанным символам (кириллица: байтов больше)
+          (subseq b 0 n)))   ; trim to chars ACTUALLY read (file-length counts bytes; multibyte ⇒ bytes > chars)
       ""))
 
-(привить 'агент :состояние (list :crossings nil))
+(graft 'agent :state (list :crossings nil))
 
-;; исходное состояние мира
-(записать *файл* "ИСХОДНОЕ")
-(defparameter *было* (прочитать *файл*))
-(format t "~&мир до действия:      ~s~%" *было*)
+;; original state of the world
+(write-file *file* "ORIGINAL")
+(defparameter *before* (read-file *file*))
+(format t "~&world before the action:  ~s~%" *before*)
 
-;; обратимый эффект: дописать (undo = вернуть исходное)
-(defparameter *дописать*
-  (let ((исходное (прочитать *файл*)))
-    (make-эффект :описание "дописать в файл"
-                 :сделать  (lambda () (записать *файл* (concatenate 'string исходное " +ИЗМЕНЕНИЕ")))
-                 :откатить (lambda () (записать *файл* исходное)))))
+;; reversible effect: append (undo = restore the original)
+(defparameter *append-fx*
+  (let ((original (read-file *file*)))
+    (make-effect :description "append to the file"
+                 :run  (lambda () (write-file *file* (concatenate 'string original " +CHANGE")))
+                 :undo (lambda () (write-file *file* original)))))
 
-;; агент под НЕУВЕРЕННОСТЬЮ действует и опровергается → откат мира И себя
+;; agent acts under UNCERTAINTY and is refuted → rollback of the world AND itself
 (defparameter *subj* (make-natom '(safe change) 0.6 0.3 "guess"))  ; c=0.3 < θ → undecided
-(format t "~%действие под неуверенностью (c=0.3), затем опровержение:~%")
-(let ((исход (act-in-world 'агент *subj* *дописать* :refuted (lambda () t))))
-  (format t "  исход: ~s~%" исход))
-(defparameter *стало* (прочитать *файл*))
-(format t "  мир после отката:     ~s~%" *стало*)
-(format t "  СЧЁТОМ: до == после ? ~a   ← след в мире откачен~%" (string= *было* *стало*))
+(format t "~%action under uncertainty (c=0.3), then refutation:~%")
+(let ((result (act-in-world 'agent *subj* *append-fx* :refuted (lambda () t))))
+  (format t "  result: ~s~%" result))
+(defparameter *after* (read-file *file*))
+(format t "  world after the rollback: ~s~%" *after*)
+(format t "  BY COUNT: before == after ? ~a   ← the trace in the world is rolled back~%" (string= *before* *after*))
 
-;; необратимый эффект (undo = nil) под неуверенностью — заблокирован
-(format t "~%необратимое действие (нет undo) под той же неуверенностью:~%")
-(привить 'агент :состояние (list :crossings nil))
-(defparameter *удалить* (make-эффект :описание "удалить файл (необратимо)" :сделать (lambda () :deleted) :откатить nil))
-(format t "  исход: ~s   ← язык НЕ пустил необратимое под неуверенностью~%"
-        (act-in-world 'агент (make-natom '(safe delete) 0.6 0.3 "guess") *удалить* :refuted (lambda () t)))
+;; irreversible effect (undo = nil) under uncertainty — blocked
+(format t "~%irreversible action (no undo) under the same uncertainty:~%")
+(graft 'agent :state (list :crossings nil))
+(defparameter *delete-fx* (make-effect :description "delete the file (irreversible)" :run (lambda () :deleted) :undo nil))
+(format t "  result: ~s   ← the language did NOT allow the irreversible under uncertainty~%"
+        (act-in-world 'agent (make-natom '(safe delete) 0.6 0.3 "guess") *delete-fx* :refuted (lambda () t)))
 
-(format t "~%  Состояние И след в мире откатываются вместе. Неоткатимое без уверенности не проходит — это защита.~%")
+(format t "~%  State AND the world's trace roll back together. The non-undoable without confidence does not pass — this is protection.~%")

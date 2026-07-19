@@ -1,29 +1,29 @@
-;;;; nolang src 05 — world. Реализация spec/05_world.md.
-;;;; Настоящий откат: под неуверенностью откатывается СЛЕД В МИРЕ + состояние агента. Необратимое без уверенности заблокировано.
+;;;; nolang src 05 — world. Implements spec/05_world.md.
+;;;; True rollback: under low confidence the WORLD-SIDE trace + agent state roll back together. Irreversible-without-confidence is blocked.
 
 (load (merge-pathnames "return.lisp" *load-pathname*))   ; atom+gate+ilan+return
 
-(defstruct эффект
-  описание
-  сделать    ; функция: меняет мир
-  откатить)  ; функция: возвращает мир. nil ⇒ эффект НЕОБРАТИМ
+(defstruct effect
+  description
+  run    ; fn: changes the world
+  undo)  ; fn: restores the world. nil ⇒ effect is IRREVERSIBLE
 
-(defun act-in-world (agent a эффект &key refuted (seed "/tmp/nol-agent.seed"))
-  "gate + реальный эффект мира с откатом. Возврат: символ исхода."
+(defun act-in-world (agent a effect &key refuted (seed "/tmp/nol-agent.seed"))
+  "gate + a real world effect with rollback. Returns: an outcome symbol."
   (cond
     ((crossed-p agent a) :already-crossed)
     (t (case (permit a :irreversible)
-         (:allowed (funcall (эффект-сделать эффект)) :done-irreversibly)  ; уверены → необратимо
+         (:allowed (funcall (effect-run effect)) :done-irreversibly)  ; confident → irreversibly
          (:denied  :aborted)
          (:fold-first
           (cond
-            ((null (эффект-откатить эффект)) :blocked-irreversible)  ; нет undo под неуверенностью → защита
+            ((null (effect-undo effect)) :blocked-irreversible)  ; no undo under low confidence → protected
             (t (mark-crossing agent a)
-               (посеять seed)                          ; снимок состояния (ilan)
-               (funcall (эффект-сделать эффект))        ; выполнить эффект мира (обратимо — есть undo)
+               (sow seed)                          ; state snapshot (ilan)
+               (funcall (effect-run effect))        ; run the world effect (reversible — undo exists)
                (cond
                  ((and refuted (funcall refuted))
-                  (funcall (эффект-откатить эффект))    ; ← сначала откат СЛЕДА В МИРЕ
-                  (взойти seed)                          ; ← затем откат состояния, помня переход
+                  (funcall (effect-undo effect))    ; ← first roll back the WORLD-SIDE trace
+                  (germinate seed)                          ; ← then roll back state, remembering the crossing
                   :rolled-back-world-and-self)
                  (t :kept)))))))))
