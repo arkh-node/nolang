@@ -77,7 +77,7 @@ Two separate OS processes. In the first, an agent facing a judgment it is *not s
 - [x] `.nol` reader — a program runs itself (homoiconic)
 - [x] `ilan` fold/sprout as the reversibility core — survives process death (`demo/run.sh`)
 - [ ] a standalone grammar/parser beyond the s-expression reader
-- [ ] the honest benchmark: does gating actually lower irreversible action under low confidence → **revgate** (opening separately)
+- [ ] the honest benchmark: does gating actually lower irreversible action under low confidence → [revgate](https://github.com/arkh-node/revgate)
 
 ## Theory
 
