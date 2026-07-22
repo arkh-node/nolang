@@ -1,3 +1,15 @@
+```
+                __
+   ____  ____  / /___ _____  ____ _
+  / __ \/ __ \/ / __ `/ __ \/ __ `/
+ / / / / /_/ / / /_/ / / / / /_/ /
+/_/ /_/\____/_/\__,_/_/ /_/\__, /
+                          /____/
+   gated action · graded confidence · continuity across death
+```
+
+> Colour banner + a live REPL with the core loaded: `bash banner.sh` or `bash nolang-shell.sh`.
+
 # nolang
 
 **A small language where uncertainty is a value, and confidence decides what an agent is allowed to do.**
