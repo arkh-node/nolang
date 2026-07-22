@@ -14,7 +14,7 @@
 
 **A small language where uncertainty is a value, and confidence decides what an agent is allowed to do.**
 
-*Early, but real: a working reference implementation, a published theory, and the design in the open. Grown on a NARS substrate, not written from scratch.*
+*Early, but real: a working reference implementation, a published theory, and the design in the open.*
 
 ---
 
