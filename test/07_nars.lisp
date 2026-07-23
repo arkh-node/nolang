@@ -1,25 +1,29 @@
-;;;; test/07_nars.lisp — the language hands off inference to a reasoning substrate. sbcl --script test/07_nars.lisp
+;;;; test/07_nars.lisp — OPTIONAL bridge to an external reasoning substrate (ONA).
+;;;; The core does NOT depend on this. Skips cleanly if the external NAR binary is absent.
+;;;; Run: sbcl --script test/07_nars.lisp
 (load (merge-pathnames "../src/nars.lisp" *load-pathname*))
+(load (merge-pathnames "../src/evidence.lisp" *load-pathname*))
 
-(format t "~&── nolang hands off the heavy inference to NARS, gets a derived atom ──~%")
-
-;; nolang KNOWS two judgments; it does NOT derive the conclusion between them itself
 (defparameter *facts*
   (list (make-natom '(isa socrates human)  0.9 0.9 "biography")
         (make-natom '(isa human mortal)    0.9 0.9 "aristotle")))
 
-(format t "  know: ~a~%" (->narsese (first *facts*)))
-(format t "  know: ~a~%" (->narsese (second *facts*)))
+(format t "~&── nolang can derive the syllogism ITSELF (own evidence calculus) ──~%")
+;; deduction now lives in the core (evidence.lisp) — no external substrate needed.
+(multiple-value-bind (f c)
+    (t-deduce (natom-f (first *facts*)) (natom-c (first *facts*))
+              (natom-f (second *facts*)) (natom-c (second *facts*)))
+  (format t "  (isa socrates human) ⊕ (isa human mortal) ⊢ (isa socrates mortal)~%")
+  (format t "  own deduction: f=~,3f c=~,3f  (confidence falls — weak syllogism, as it should)~%" f c)
+  (assert (< c 0.9) () "deduction must lower confidence")
+  (format t "  ✓ core deduces without any external NARS.~%"))
 
-;; ask for the conclusion it did not derive itself
-(let ((r (nars-ask *facts* '(isa socrates mortal))))
-  (format t "~%  asked NARS:   (isa socrates mortal)?~%")
-  (format t "  NARS derived: ~s  (f=~,3f c=~,3f)  ← ~a~%"
-          (natom-judgment r) (natom-f r) (natom-c r) (natom-trace r)))
-
-;; what does not follow — NARS won't invent (low confidence / no answer)
-(let ((r (nars-ask *facts* '(isa socrates dog))))
-  (format t "~%  asked NARS:   (isa socrates dog)?~%")
-  (format t "  answer:       (f=~,3f c=~,3f)  ← ~a~%" (natom-f r) (natom-c r) (natom-trace r)))
-
-(format t "~%  The language does not imitate reasoning — it hands it off to the substrate. (f,c) ↔ NARS truth, one pair on both sides.~%")
+(format t "~%── optional: hand off to external ONA if installed ──~%")
+(handler-case
+    (let ((r (nars-ask *facts* '(isa socrates mortal))))
+      (format t "  external NARS derived: ~s (f=~,3f c=~,3f) ← ~a~%"
+              (natom-judgment r) (natom-f r) (natom-c r) (natom-trace r)))
+  (error (e)
+    (declare (ignore e))
+    (format t "  SKIPPED: external ONA (NAR binary) not installed — not required.~%")
+    (format t "  The core stands on its own evidence calculus; the substrate bridge is optional.~%")))

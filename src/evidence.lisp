@@ -5,17 +5,18 @@
 ;;;; Evidence view of a judgment: w+ (positive), w- (negative), w = w+ + w-.
 ;;;;   f = w+ / w                    frequency (how far it holds)
 ;;;;   c = w / (w + k)               confidence (how much evidence, vs horizon k)
-;;;;   u = k / (w + k) > 0 always    ignorance — AIKR: c<1 is structural (finite evidence).
+;;;;   u = k / (w + k) > 0 always    ignorance — the Ein-Sof bound: c<1 is structural,
+;;;;                                  only the Infinite is certain (finite evidence; cf. Wang's AIKR).
 
 (load (merge-pathnames "atom.lisp" *load-pathname*))
 
 (defparameter *k* 1.0
-  "Evidential horizon (NARS k / Beta prior weight). u = k/(w+k) > 0 ⇒ c<1 forever = AIKR.")
+  "Evidential horizon (Beta prior weight). u = k/(w+k) > 0 ⇒ c<1 forever = the Ein-Sof bound (cf. Wang's AIKR).")
 
 ;; ── Bridge: (f,c) ↔ evidence ────────────────────────────────────────────────
 (defun fc->evidence (f c &optional (k *k*))
   "(f,c) → (values w+ w-).  w = k·c/(1-c);  w+ = f·w;  w- = (1-f)·w."
-  (assert (< c 1) () "AIKR: confidence must be < 1 (got ~a)" c)
+  (assert (< c 1) () "Ein-Sof bound: confidence must be < 1 (got ~a)" c)
   (let* ((w  (/ (* k c) (- 1 c)))
          (w+ (* f w)))
     (values w+ (- w w+))))
