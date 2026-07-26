@@ -107,3 +107,27 @@ nolang is by **Aleksei Rybnikov** ([ORCID 0009-0009-8624-8720](https://orcid.org
 ## License
 
 Apache-2.0.
+
+## Honest status (2026-07-26)
+
+**A defect we shipped, and fixed.** Until today the public `main` combined confidences by
+multiplication (`c = ca · cb` in `src/eval.lisp`). That breaks idempotence: two *agreeing*
+witnesses **lowered** confidence instead of raising it. The paper *Grounded Uncertainty*
+(DOI 10.5281/zenodo.21332198) points at this repository as its runnable artifact — so the
+public branch had to compute correctly. Fixed in `src/evidence.lisp`: an evidence-based
+calculus with the operator that was missing all along, **revision** (agreeing sources raise
+confidence: 0.5, 0.5 → 0.667). Tests: `08_evidence` 21/21, `09_composition` 3/3.
+
+**What is architecture and what is measured.** Everything here is currently at the level of
+**architecture plus single runs**. There is no ablation, no calibration study, no baseline
+comparison. Where the code demonstrates a mechanism, it demonstrates a mechanism — it is not
+evidence about the world.
+
+**Not shown.** That `(f,c)` *is* a Beta opinion is a **program**, not a result: the bridge
+to subjective logic (Jøsang) is stated, not built. Chains like `(f,c) = AIKR = Ein-Sof =
+continuity` mix things of different kinds; two links are real in the code, one is unbuilt,
+one is a gloss. Kabbalistic vocabulary is **orbit, not argument**.
+
+**AIKR / `c < 1`.** Confidence never reaches 1 by construction — finite evidence does not
+saturate. We call this the *Ein-Sof bound*; the name is ours and decorative, the constraint
+is Wang's (NARS).
