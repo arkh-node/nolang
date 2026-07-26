@@ -1,6 +1,7 @@
 ;;;; nolang src 00 — atom. Implements spec/00_atom.md.
 ;;;; value vs judgment; atom = judgment + (f . c) + trace. Homoiconic Lisp (SBCL).
-;;;; Gate: a judgment must be a relation over values; trace is mandatory (else defect); c < 1 (AIKR).
+;;;; Gate: a judgment must be a relation over values; trace is mandatory (else defect);
+;;;; c < 1 — the Ein-Sof bound: only the Infinite is certain (cf. Wang's AIKR).
 
 (defun value-p (x)
   "value (token): a symbol or string/path — NOT a list, no attached truth."
@@ -26,7 +27,7 @@
     ((not (judgment-p judgment)) (error 'defect :why (format nil "not a judgment: ~s" judgment)))
     ((or (null trace) (and (stringp trace) (string= trace ""))) ; genesis: an atom without a source is a defect
      (error 'defect :why (format nil "atom without a source: ~s" judgment)))
-    ((not (< c 1))                                              ; AIKR: c=1 is not allowed
+    ((not (< c 1))                                              ; Ein-Sof bound: c=1 forbidden (only the Infinite is certain)
      (error 'defect :why (format nil "c=~a — confidence cannot be 1" c)))
     ((not (and (<= 0 f 1) (<= 0 c 1)))
      (error 'defect :why (format nil "f/c out of [0,1]: ~a ~a" f c)))
