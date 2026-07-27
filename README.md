@@ -93,7 +93,7 @@ Two separate OS processes. In the first, an agent facing a judgment it is *not s
 
 ## Theory
 
-- **Grounded Uncertainty: Graded Truth for the Indeterminate Status of Synthetic Subjects** · [`zenodo.21332198`](https://doi.org/10.5281/zenodo.21332198)
+- **A Witness Without Substance: How to Stop Asking Who Is Inside** · [`zenodo.21615342`](https://doi.org/10.5281/zenodo.21615342)
 - **Indeterminate Ontologies of Synthetic Subjects: A Metaphysics of Caution** · [`zenodo.21288590`](https://doi.org/10.5281/zenodo.21288590)
 
 ## What this is not
@@ -112,9 +112,10 @@ Apache-2.0.
 
 **A defect we shipped, and fixed.** Until today the public `main` combined confidences by
 multiplication (`c = ca · cb` in `src/eval.lisp`). That breaks idempotence: two *agreeing*
-witnesses **lowered** confidence instead of raising it. The paper *Grounded Uncertainty*
-(DOI 10.5281/zenodo.21332198) points at this repository as its runnable artifact — so the
-public branch had to compute correctly. Fixed in `src/evidence.lisp`: an evidence-based
+witnesses **lowered** confidence instead of raising it. It was found while auditing the paper
+that pointed at this repository as its runnable artifact — a record since withdrawn by the
+author, so the reference is gone; the defect it exposed is not. Fixed in `src/evidence.lisp`:
+an evidence-based
 calculus with the operator that was missing all along, **revision** (agreeing sources raise
 confidence: 0.5, 0.5 → 0.667). Tests: `08_evidence` 21/21, `09_composition` 3/3.
 
