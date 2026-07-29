@@ -316,7 +316,7 @@
                              reversible / compensable / irreversible")))))
     (advance)
     (eat-word "action")
-    (let ((id (eat-ident "имя действия")) comp gate req)
+    (let ((id (eat-ident "имя действия")) comp gate req perm-quote perm-who perm-when)
       (when (string= rev "compensable")
         (eat-word "compensated" "compensable-действие обязано назвать компенсацию: ~
                                  иначе «возместимое» — пустое слово")
@@ -339,6 +339,26 @@
                            носители, и сводить их в одну шкалу нельзя")
         (eat-punct ">=")
         (setf req (eat-grade "минимальная степень основания")))
+      ;; ── РАЗРЕШЕНИЕ: ТРЕТЬЯ ОСЬ, и она НЕ на решётке основания ────────────────
+      ;; 🔴 Разбор Невис (29.07), снявший мой вопрос вместо того, чтобы ответить на него.
+      ;; Я спрашивал, ниже или выше машинной проверки стоит слово человека. Ответ: оно вообще
+      ;; не стоит на этой решётке — это ДРУГОЙ РОД. Свидетельство отвечает «что ЕСТЬ» и имеет
+      ;; степень достоверности; разрешение отвечает «что МОЖНО» и степени не имеет вовсе:
+      ;; оно бывает данным или не данным, а не «более истинным».
+      ;; Поставь их на одну шкалу — получишь два уродства разом: право можно будет ВЫПРОСИТЬ
+      ;; прогоном тестов (усилить свидетельствами до нужного уровня), а отсутствие права
+      ;; будет читаться как «слабое основание», хотя это не слабость, а ЗАПРЕТ.
+      ;; 🔴 ЦИТАТА ОБЯЗАТЕЛЬНА ДОСЛОВНО, с автором и датой. Это не украшение: Невис однажды
+      ;; передала мне как слово Алексея строку, НАБРАННУЮ в поле ввода и не отправленную.
+      ;; Требуй язык дословную цитату — та ошибка не смогла бы записаться: цитировать было нечего.
+      (when (word? "needs")
+        (advance)
+        (eat-word "permission" "после первого `needs` идёт `grade`, после второго — `permission`")
+        (setf perm-quote (eat-str "ДОСЛОВНАЯ цитата разрешения — пересказ не годится"))
+        (eat-word "from" "разрешение адресно: кто именно разрешил")
+        (setf perm-who (eat-ident "кто разрешил"))
+        (eat-word "at" "разрешение датировано: вчерашнее «да» не разрешает сегодняшнее")
+        (setf perm-when (eat-str "дата разрешения")))
       (when (and (null req) (string= rev "irreversible"))
         (serr "необратимое действие ~a не сказало, какой степени основание ему нужно.~%  ~
                Гейт по вере этого не заменяет: свидетельств можно принести сколько угодно,~%  ~
@@ -351,6 +371,7 @@
                     gated by belief >= 0.9~%    else fold" id)))
       `(action ,id :reversibility ,(intern (string-upcase rev))
                ,@(when req `(:needs-grade ,req))
+               ,@(when perm-who `(:permission (,perm-quote ,perm-who ,perm-when)))
                ,@(when gate `(:requires (>= belief ,(first gate)) :else ,(second gate)))
                ,@(when (and gate (third gate)) `(:theta-from ,(third gate)))
                ,@(when comp `(:compensated-by ,comp))))))
@@ -405,6 +426,19 @@
         (values (mapcar (lambda (x) (cdr (assoc x sub))) from)
                 (mapcar (lambda (x) (cdr (assoc x sub))) searched))))))
 
+(defun p-revoke ()
+  ;; revoke permission from ИМЯ because "…"
+  ;; 🔴 ОТДЕЛЬНАЯ ФОРМА, а не `retract` над разрешением — потому что и последствие другое.
+  ;; Отзыв свидетеля рушит ОСНОВАНИЕ: вера падает, действие осиротело. Отзыв разрешения
+  ;; основания не трогает: вера прежняя, свидетельства целы — а действие стало НЕПРАВОМЕРНЫМ.
+  ;; Числами эти два случая не различить, как и три статуса из I3. Значит нужен четвёртый.
+  (eat-word "revoke")
+  (eat-word "permission" "отзывается именно РАЗРЕШЕНИЕ; свидетеля отзывает `retract`")
+  (eat-word "from" "разрешение адресно — назовите, чьё именно отозвано")
+  (let ((who (eat-ident "чьё разрешение отозвано")))
+    (eat-word "because" "отзыв права обязан назвать причину, как и отзыв свидетеля")
+    `(revoke ,who :reason ,(eat-str "причина отзыва разрешения"))))
+
 (defun p-retract ()
   ;; retract ИМЯ because "…"    ← причина ОБЯЗАТЕЛЬНА: молча свидетеля не убирают
   (eat-word "retract")
@@ -428,10 +462,11 @@
         ((word? "claim")   (p-claim))
         ((word? "rule")    (p-rule))
         ((word? "retract") (p-retract))
+        ((word? "revoke")  (p-revoke))
         ((word? "perform") (p-perform))
         ((or (word? "reversible") (word? "compensable") (word? "irreversible")) (p-action))
         (t (serr "непонятное начало объявления: «~a». Ожидалось одно из: ~
-                  lattice · import · witness · ask · claim · rule · retract · perform · ~
+                  lattice · import · witness · ask · claim · rule · retract · revoke · perform · ~
                   reversible/compensable/irreversible action"
                  (if (peek) (tok-val (peek)) "конец текста")))))
 

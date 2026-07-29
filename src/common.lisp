@@ -255,7 +255,7 @@
 ;;; покрывает и что сознательно пропускает. Добавил форму, забыл диспетчер — падение при
 ;;; загрузке, а не тихая дыра в семантике.
 (defparameter *form-vocabulary*
-  '("lattice" "witness" "ask" "claim" "action" "do" "retract" "rule" "import")
+  '("lattice" "witness" "ask" "claim" "action" "do" "retract" "rule" "import" "revoke")
   "Все формы языка. Расширяется ТОЛЬКО здесь; дальше компилятор потребует покрытия.")
 
 (define-condition dispatcher-gap (error)

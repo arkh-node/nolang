@@ -513,11 +513,11 @@
 ;; проверяющего доходит только как запись в тексте программы. Проверять нечего — проверяется
 ;; каждое РАСКРЫТОЕ применение, на своих конкретных степенях.
 (assert-covers "check-program"
-               '("lattice" "import" "retract" "witness" "ask" "claim" "action" "do")
+               '("lattice" "import" "retract" "revoke" "witness" "ask" "claim" "action" "do")
                :skip '("rule"))
 ;; перепрогон внутри chk-retract действий не совершает — то же основание, что у `replay`
 (assert-covers "chk-retract/перепрогон" '("lattice" "import" "witness" "ask" "claim" "action")
-               :skip '("do" "retract" "rule"))
+               :skip '("do" "retract" "revoke" "rule"))
 
 (defun check-program (forms)
   "→ (values env errors). Ошибки в порядке появления."
@@ -533,6 +533,7 @@
           (cond ((string= head "lattice") (chk-lattice form))
                 ((string= head "import")  (chk-import form))
                 ((string= head "retract") (chk-retract form))
+                ((string= head "revoke")  nil)   ; право склад не трогает; см. reduce.lisp
                 ((string= head "witness") (chk-witness form))
                 ((string= head "ask")     (chk-ask form))
                 ((string= head "claim")   (chk-claim form))

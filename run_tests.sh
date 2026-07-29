@@ -55,7 +55,10 @@ if command -v agda >/dev/null 2>&1; then
       # источник тихого расхождения. Совпадать надо СТРУКТУРНО: два пробела, не-пробелы, " : ".
       #
       # Теорем, посчитанных руками: Preservation 19 · BeliefMass 7 · ModuleImport 7 ·
-      # SupportSet 6 · Act 12 = 51.
+      # SupportSet 6 · Act 12 · Representative 6 = 57.
+      # (Representative добавлен Невис 29.07: rep-single · rep-mono · rep-bounded · rep-idem
+      #  + контрпримеры sum-not-idem, min-not-mono. Её теоремы стоят с НУЛЕВОЙ колонки,
+      #  поэтому авто-счёт «утверждений уровня модуля» их недобирает — рукописный счёт вернее.)
       # (SupportSet и Act добавлены Невис 29.07 и пересчитаны по ИМЕНАМ результатов, а не
       #  по строкам: SupportSet — mass-resp-∈ · ∪-idem · ∪-comm · derived≡direct ·
       #  shared-root-once · mono-∈; Act — ⊑-refl · ⊑-trans · strengthen · bottom-blocks ·
@@ -83,7 +86,7 @@ fi
 
 echo "────────────────────────────────────────"
 if [ $fail -eq 0 ]; then
-  echo "ВСЁ ЗЕЛЁНОЕ · законов, проверок и утверждений: $total   (из них теорем в Agda: 51)"
+  echo "ВСЁ ЗЕЛЁНОЕ · законов, проверок и утверждений: $total   (из них теорем в Agda: 57)"
 else
   echo "УПАЛО: $fail"; exit 1
 fi

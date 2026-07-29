@@ -36,8 +36,9 @@
   short-roots)   ; требование к множеству не выполнено: (нужно есть)
 (defstruct (sv (:constructor sv (where why))) where why)
 (defstruct (fv (:constructor fv (action on b thr lack))) action on b thr lack)
-(defstruct (av (:constructor av (rev thr else comp &optional need))) rev thr else comp
-  need)  ; 🔴 требуемая степень основания. Машина её НЕ проверяет: это дело типизации
+(defstruct (av (:constructor av (rev thr else comp &optional need perm))) rev thr else comp
+  need
+  perm)  ; (цитата кто дата) — РАЗРЕШЕНИЕ. Не на решётке основания: другой род (право, не факт).  ; 🔴 требуемая степень основания. Машина её НЕ проверяет: это дело типизации
          ; (`formal/Act.agda`). Хранится ради вердикта — чтобы точка решения могла назвать,
          ; чего действие требовало, даже когда программа уже отвергнута проверяющим.
 
@@ -258,7 +259,8 @@
              (av (kw form :reversibility 'reversible)
                  (let ((r (kw form :requires))) (and (consp r) (third r)))
                  (kw form :else) (kw form :compensated-by)
-                 (let ((g (kw form :needs-grade))) (and g (parse-grade g))))))
+                 (let ((g (kw form :needs-grade))) (and g (parse-grade g)))
+                 (kw form :permission))))
 
 (defun red-do (form store ledger &optional done)
   ;; R-DO-PASS / R-DO-FOLD — единственное место, где программа обращается наружу.
@@ -315,6 +317,7 @@
               ;; 🔴 Отзыв КОРНЯ убивает всех потомков сам собой: свидетель с мёртвым корнем
               ;; выпадает из основания без отдельного правила. Побочная выгода носителя.
               ((string= h "retract") (unless ignore-retracts (pushnew (second form) d)))
+              ((string= h "revoke") nil)   ; право основания не трогает — см. step-cfg
               ((string= h "witness") (setf store (red-witness form store)))
               ((string= h "ask")     (setf store (red-ask form store)))
               ((string= h "claim")   (setf store (red-claim form store d)))
@@ -323,7 +326,7 @@
 ;; 🔴 ПОЛНОТА ДИСПЕТЧЕРОВ проверяется при загрузке (см. common.lisp). `replay` сознательно
 ;; не совершает действий — пересчёт отвечает на вопрос «каким был бы склад», а не переигрывает
 ;; историю; поэтому "do" у него в пропущенных, и это объявлено, а не забыто.
-(assert-covers "replay" '("lattice" "import" "retract" "witness" "ask" "claim" "action")
+(assert-covers "replay" '("lattice" "import" "retract" "revoke" "witness" "ask" "claim" "action")
                :skip '("do" "rule"))
 
 ;;; ── МОСТ НАРУЖУ ─────────────────────────────────────────────────────────────
@@ -395,6 +398,25 @@
         ((string= h "do")
          (multiple-value-bind (st lg) (red-do form store ledger (cfg-done c))
            (к st pend lg)))
+        ;; ── 🔴 R-REVOKE: ЧЕТВЁРТЫЙ СТАТУС ─────────────────────────────────
+        ;; Отзыв разрешения НЕ трогает склад: основание цело, вера прежняя, свидетели живы.
+        ;; Меняется единственное — ПРАВО. Совершённое действие, чьё разрешение отозвано,
+        ;; становится НЕПРАВОМЕРНЫМ, и это не осиротение: там рухнуло основание, здесь —
+        ;; основание стоит, а стоять на нём было нельзя. Числами их не различить.
+        ((string= h "revoke")
+         (let* ((who (second form))
+                (плохие '()))
+           (dolist (e ledger)
+             (when (eq (first e) :performed)
+               (let* ((av* (gethash (second e) store))
+                      (perm (and (av-p av*) (av-perm av*))))
+                 (when (and perm (eq (second perm) who))
+                   (push (list :unauthorized (second e) (third e) (fourth e) (fifth e)
+                               (kw form :reason) (first perm))
+                         плохие)))))
+           (к store pend
+              (append плохие
+                      (cons (list :revoked who (kw form :reason) nil nil) ledger)))))
         ;; ── R-RETRACT ──────────────────────────────────────────────────────
         ((string= h "retract")
          (let* ((w (second form))
@@ -414,7 +436,8 @@
         (t (к store))))))
 
 ;;; ── прогон ──────────────────────────────────────────────────────────────────
-(assert-covers "step-cfg" '("lattice" "import" "witness" "ask" "claim" "action" "do" "retract")
+(assert-covers "step-cfg" '("lattice" "import" "witness" "ask" "claim" "action" "do"
+                            "retract" "revoke")
                :skip '("rule"))
 
 ;;; ── НОСИТЕЛЬ ────────────────────────────────────────────────────────────────
@@ -562,6 +585,14 @@
         (:folded (format t "~&  ⊘ свёрнуто ~a на основании ~a: вера ~,3f < порог ~,3f, ~
                               не хватило ~,3f → ~a~%" a j b thr lack els))
         (:retracted (format t "~&  ✂ ОТОЗВАН свидетель ~a: ~a~%" a j))
+        (:revoked (format t "~&  ⛔ ОТОЗВАНО РАЗРЕШЕНИЕ ~a: ~a~%" a j))
+        ;; 🔴 Четвёртый статус. Ни «осиротело», ни «непоправимо»: основание ЦЕЛО.
+        (:unauthorized
+         (format t "~&  ⛔ НЕПРАВОМЕРНО: ~a совершено на основании ~a — основание ЦЕЛО ~
+                    (вера ~,3f ≥ порог ~,3f),~%~5Tно разрешение отозвано: ~a~%~
+                    ~5Tцитата, на которую ссылались: «~a»~%~
+                    ~5TЭто НЕ осиротение: там рухнуло основание, здесь — право.~%"
+                 a j (or b 0) (or thr 0) lack els))
         (:ran-on (format t "~&  ⌂ прогон на носителе ~a (склад от носителя НЕ зависит)~%" a))
         ;; 🔴 У возмещения СВОЙ порог и СВОИ корни — оно отдельное действие, а не пометка
         ;; на чужом. `lack` здесь несёт имя возмещаемого действия, `els` — корни основания.
