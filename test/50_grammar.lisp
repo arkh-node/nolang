@@ -32,6 +32,7 @@ claim benefit : strict
   searched registry-273
 
 irreversible action publish
+  needs grade >= strict
   gated by belief >= 0.7
   else fold
 
@@ -51,21 +52,30 @@ perform publish on benefit
 (format t "~&── 1. НЕОБРАТИМОЕ БЕЗ ГЕЙТА — не разбирается ──~%")
 
 (check "irreversible без `gated by` — ошибка разбора, а не типа"
-       (not (parse-ok? "irreversible action publish")))
+       (not (parse-ok? "irreversible action publish needs grade >= strict")))
 (check "…и сообщение показывает, что дописать"
-       (search "gated by belief" (parse-error-of "irreversible action publish")))
+       (search "gated by belief"
+               (parse-error-of "irreversible action publish needs grade >= strict")))
+;; 🔴 ДЕСЯТОЕ незаписываемое состояние (29.07): необратимое без требования к СТЕПЕНИ основания.
+;; Гейт по вере его не заменяет — свидетельств можно принести сколько угодно, а происхождение
+;; останется прежним (`formal/Act.agda`, `no-irreversible-on-bottom`).
+(check "irreversible без `needs grade` — тоже ошибка разбора"
+       (not (parse-ok? "irreversible action publish gated by belief >= 0.7 else fold")))
+(check "…и сообщение говорит именно про СТЕПЕНЬ, а не про веру"
+       (let ((e (parse-error-of "irreversible action publish gated by belief >= 0.7 else fold")))
+         (and (search "needs grade" e) (search "происхождение" e))))
 (check "reversible без гейта — законно"
        (parse-ok? "reversible action note"))
 
 (format t "~&── 2. ГЕЙТ НА ЧЁМ-ЛИБО КРОМЕ МАССЫ ВЕРЫ — не разбирается ──~%")
 
 (check "`gated by confidence` не РАЗБИРАЕТСЯ (слово belief вшито в продукцию)"
-       (not (parse-ok? "irreversible action p gated by confidence >= 0.9 else fold")))
+       (not (parse-ok? "irreversible action p needs grade >= strict gated by confidence >= 0.9 else fold")))
 (check "…и сообщение объясняет, почему именно произведение"
        (search "разорваны пополам"
-               (parse-error-of "irreversible action p gated by confidence >= 0.9 else fold")))
+               (parse-error-of "irreversible action p needs grade >= strict gated by confidence >= 0.9 else fold")))
 (check "гейт без ветви отказа — не разбирается"
-       (not (parse-ok? "irreversible action p gated by belief >= 0.9")))
+       (not (parse-ok? "irreversible action p needs grade >= strict gated by belief >= 0.9")))
 
 (format t "~&── 3. COMPENSABLE БЕЗ КОМПЕНСАЦИИ — не разбирается ──~%")
 
@@ -157,6 +167,6 @@ retract b because \"источник оказался поздней встав�
 
 (format t "~&~%── как выглядит отказ разбора ──~%~%~a~%~%~a~%"
         (parse-error-of "irreversible action publish")
-        (parse-error-of "irreversible action p gated by confidence >= 0.9 else fold"))
+        (parse-error-of "irreversible action p needs grade >= strict gated by confidence >= 0.9 else fold"))
 
 (format t "~%── ALL GREEN · проверок: ~a ──~%" *n*)

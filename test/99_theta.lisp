@@ -100,6 +100,7 @@
 
 (defparameter *исходник* "
 irreversible action publish
+  needs grade >= образ
   gated by belief >= derived gain 1 loss 4 learn 0.6 discount 0.9
   else fold
 ")
@@ -111,9 +112,9 @@ irreversible action publish
 (check "🔴 вывод ОСТАЁТСЯ в форме — читатель видит, из чего порог получился"
        (equal '(1 4 0.6 0.9) (getf (cddr (first (parse *исходник*))) :theta-from)))
 (check "неполный вывод не разбирается: нельзя назвать выигрыш и умолчать о потере"
-       (not (parse-ok? "irreversible action p gated by belief >= derived gain 1 else fold")))
+       (not (parse-ok? "irreversible action p needs grade >= образ gated by belief >= derived gain 1 else fold")))
 (check "числом порог назначить по-прежнему можно — вывод не обязателен, а предпочтителен"
-       (parse-ok? "irreversible action p gated by belief >= 0.9 else fold"))
+       (parse-ok? "irreversible action p needs grade >= образ gated by belief >= 0.9 else fold"))
 
 (format t "~&── что видит читатель ──~%")
 (format t "  gain 1 · loss 4 · learn 0.6 · discount 0.9  →  θ = ~,3f~%"

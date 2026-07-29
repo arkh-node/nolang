@@ -21,8 +21,11 @@
 ;;; `red-claim`: на их раздельности стоит доказательство Невис (см. шапку common.lisp).
 
 ;;; ── окружение проверяющего ──────────────────────────────────────────────────
-(defstruct (bnd (:constructor bnd (kind &key grade f c thr else origin)))
-  kind grade f c thr else origin)                     ; kind: :jud | :silence | :action
+(defstruct (bnd (:constructor bnd (kind &key grade f c thr else origin roots)))
+  kind grade f c thr else origin
+  roots)   ; 🔴 ПОДДЕРЖКА как МНОЖЕСТВО корней (`formal/SupportSet.agda`). У свидетеля —
+           ; {его корень}; у выведенного утверждения — ОБЪЕДИНЕНИЕ поддержек посылок.
+           ; Прежде вывод не нёс корня вовсе, и свёртка группировала его по `nil`.
 
 (defvar *env*) (defvar *sil*)
 
@@ -193,9 +196,10 @@
       (err! :grade-shape id "у свидетеля ~a ~a" id (g-shape-error g))
       (setf g nil))
     ;; 🔴 КОРЕНЬ свидетеля — ближайший известный источник; нет источника → сам себе корень.
-    (setf (gethash id *env*)
-          (bnd :jud :grade (or g (g-bot)) :f (kw form :f 0.9) :c (kw form :c 0.8)
-               :origin (or (first (kw form :source)) id)))))
+    (let ((root (or (first (kw form :source)) id)))
+      (setf (gethash id *env*)
+            (bnd :jud :grade (or g (g-bot)) :f (kw form :f 0.9) :c (kw form :c 0.8)
+                 :origin root :roots (list root))))))
 
 (defun chk-ask (form)
   ;; (ask ID :in (corpus library) :reason "…")  → молчание, ЛИНЕЙНОЕ
@@ -235,14 +239,34 @@
                (g   (if mod (grade-through-module mod raw) raw)))
           (push (list (second f)
                       (or g (g-bot))
-                      (or (first (kw f :source)) (second f)))
+                      (or (first (kw f :source)) (second f))
+                      (kw f :f 0.9) (kw f :c 0.8))
                 out))))))
+
+(defun root-best-c (dead)
+  "Корень → его тяжелейший свидетель: (корень имя f c). Свой обход, не общий с машиной.
+   🔴 Вес есть свойство КОРНЯ: масса читает членство в поддержке, а не список посылок."
+  (let ((tbl '()))
+    (dolist (w *corpus-c* tbl)
+      (destructuring-bind (name grade root &optional (f 0.9) (c 0.8)) w
+        (declare (ignore grade))
+        ;; 🔴 Нелитеральный свидетель (нет f/c) в таблицу НЕ входит: его вес неизвестен
+        ;; статически. Тогда корень не найдётся, и обход честно пометит основание
+        ;; нелитеральным — то есть скажет «решится прогоном», а не соврёт числом.
+        (unless (or (member name dead) (member root dead) (null f) (null c))
+          (multiple-value-bind (wp wm) (fc->evidence f c)
+            (let ((cell (assoc root tbl)))
+              (if (null cell)
+                  (push (list root name f c (+ wp wm)) tbl)
+                  (when (> (+ wp wm) (fifth cell))
+                    (setf (cdr cell) (list name f c (+ wp wm))))))))))))
 
 (defun select-c (spec)
   "→ (values подошедшие отсеянные). Свой обход: свёртка справа, не накопление слева."
   (let ((in '()) (out '()))
     (dolist (w (reverse *corpus-c*))
-      (destructuring-bind (name grade root) w
+      (destructuring-bind (name grade root &optional f c) w
+        (declare (ignore f c))
         (unless (or (member name *dead*) (member root *dead*))
           (if (witness-matches-p grade root spec)
               (push name in)
@@ -291,11 +315,16 @@
     (let ((seen '()) (f 0.5) (c 0.0)
           ;; 🔴 пустая база — ДНО, не верх решётки (заказ §5.6)
           (grade (if (null from) (g-bot) (g-top)))
+          (roots '())
           (literal t))
       ;; 🔴 Свёртка по КОРНЯМ. Реализация СВОЯ, не общая с машиной: на раздельности
       ;; chk-claim/red-claim стоит доказательство Невис (см. шапку common.lisp).
       ;; Здесь идём иначе — сперва собираем лучших по корню, потом ревизуем слева.
-      (let ((best-by-root '()))
+      ;; 🔴 СТЕПЕНЬ и МАССА считаются РАЗНЫМИ обходами, и это не удвоение работы.
+      ;; Степень — по посылкам (у вывода берётся ЕГО собственная: объявленная ниже выведенной
+      ;; не должна подниматься обратно к своему корню). Масса — по ЧЛЕНСТВУ В ПОДДЕРЖКЕ,
+      ;; и поддержка вывода есть ОБЪЕДИНЕНИЕ поддержек его посылок (`formal/SupportSet.agda`).
+      (let ((best-by-root '()) (support '()))
         (dolist (p from)
           (let ((b (look p)))
             (cond
@@ -307,32 +336,39 @@
                (when (eq (bnd-kind b) :silence) (use-silence! p id))
                (unless (member p seen)               ; дисциплина тождества
                  (push p seen)
-                 (if (eq (bnd-kind b) :silence)
-                     (setf grade (g-meet grade (g-bot)))
-                     (let* ((root (bnd-origin b))
-                            (cell (assoc root best-by-root))
-                            (w (if (and (bnd-f b) (bnd-c b))
-                                   (multiple-value-bind (wp wm) (fc->evidence (bnd-f b) (bnd-c b))
-                                     (+ wp wm))
-                                   -1)))
-                       (when (= w -1) (setf literal nil))
-                       (if (null cell)
-                           (push (list root w b) best-by-root)
-                           (when (> w (second cell)) (setf (cdr cell) (list w b)))))))))))
+                 (cond
+                   ((eq (bnd-kind b) :silence) (setf grade (g-meet grade (g-bot))))
+                   ;; выведенное утверждение: своя степень, поддержка — объединением
+                   ((and (bnd-roots b) (null (bnd-origin b)))
+                    (dolist (r (bnd-roots b)) (pushnew r support))
+                    (setf grade (g-meet grade (bnd-grade b))))
+                   (t
+                    (when (bnd-origin b) (pushnew (bnd-origin b) support))
+                    (let* ((root (bnd-origin b))
+                           (cell (assoc root best-by-root))
+                           (w (if (and (bnd-f b) (bnd-c b))
+                                  (multiple-value-bind (wp wm) (fc->evidence (bnd-f b) (bnd-c b))
+                                    (+ wp wm))
+                                  -1)))
+                      (when (= w -1) (setf literal nil))
+                      (if (null cell)
+                          (push (list root w b) best-by-root)
+                          (when (> w (second cell)) (setf (cdr cell) (list w b))))))))))))
+        ;; степень — по представителям групп свидетелей
         (dolist (cell (reverse best-by-root))
-          (let ((b (third cell)))
-            (setf grade (g-meet grade (bnd-grade b)))
-            (if (and (bnd-f b) (bnd-c b))
-                (multiple-value-setq (f c) (t-revise f c (bnd-f b) (bnd-c b)))
-                (setf literal nil)))))
+          (setf grade (g-meet grade (bnd-grade (third cell)))))
+        ;; 🔴 масса — по членству: каждый корень поддержки вносит вес РОВНО ОДИН раз
+        (let ((tbl (root-best-c *dead*)))
+          (dolist (r (reverse support))
+            (let ((cell (assoc r tbl)))
+              (if cell
+                  (multiple-value-setq (f c) (t-revise f c (third cell) (fourth cell)))
+                  (setf literal nil)))))
+        (setf roots (reverse support)))
 
       ;; требование к множеству: не хватило различных корней ⇒ дно (как пустая база)
       (when need-roots
-        (let ((n (length (remove-duplicates
-                          (mapcar (lambda (p) (let ((b (look p)))
-                                                (and b (bnd-origin b))))
-                                  seen)))))
-          (when (< n need-roots) (setf grade (g-bot)))))
+        (when (< (length roots) need-roots) (setf grade (g-bot))))
 
       ;; ── ЗАПРЕТ ОТМЫВАНИЯ: объявленная степень не выше выведенной (заказ §5.5) ──
       (when (and declared (not (g<= declared grade)))
@@ -345,7 +381,8 @@
 
       (setf (gethash id *env*)
             (bnd :jud :grade (if (and declared (g<= declared grade)) declared grade)
-                      :f (and literal f) :c (and literal c))))))
+                      :f (and literal f) :c (and literal c)
+                      :roots roots)))))
 
 (defun chk-action (form)
   ;; (action NAME :reversibility irreversible :requires (>= belief 0.9) :else fold)
@@ -364,11 +401,39 @@
       (err! :ungated id
             "необратимое действие ~a объявлено без гейта. Необратимое недостижимо ~
              без порога по массе веры." id))
+    ;; 🔴 Возмещение обязано быть ОБЪЯВЛЕННЫМ действием: у него свой гейт и своя цена ошибки.
+    ;; Имя, за которым ничего не стоит, — это «названо», а не «сделано»; ровно та разница,
+    ;; ради которой компенсация и заводилась действием, а не пометкой.
+    (let ((comp (kw form :compensated-by)))
+      (when comp
+        (let ((b (look comp)))
+          (cond
+            ((null b)
+             (err! :unknown id "~a возмещается через ~a, но такого действия не объявлено.~%  ~
+                                Возмещение — действие со своим гейтом, а не имя." id comp))
+            ((not (eq (bnd-kind b) :action))
+             (err! :slot id "~a возмещается через ~a, а это не действие" id comp))))))
     (when (and req (null els))
       (err! :no-else id
             "гейт у ~a без ветви отказа. Порог, который нечем не пройти, не гейт: ~
              нужна :else (fold / подпись человека / понижение класса)." id))
-    (setf (gethash id *env*) (bnd :action :thr thr :else els))))
+    ;; ── ТРЕБОВАНИЕ К СТЕПЕНИ ОСНОВАНИЯ (`formal/Act.agda`, Невис 29.07) ──────────
+    (let ((need (let ((g (kw form :needs-grade))) (and g (parse-grade g)))))
+      (when (and (kw form :needs-grade) (null need))
+        (err! :grade id "неизвестная степень в требовании действия ~a" id))
+      (when (and need (not (g-shape-ok-p *lattice* need)))
+        (err! :grade-shape id "в требовании действия ~a: ~a" id (g-shape-error need))
+        (setf need nil))
+      ;; 🔴 НЕОБРАТИМОЕ, ТРЕБУЮЩЕЕ ДНА, — ЭТО НЕ ТРЕБОВАНИЕ. Её `no-irreversible-on-bottom`
+      ;; даёт защиту ровно при `req ≢ ⊥`: при требовании-дне типизируется что угодно
+      ;; (`bottom-blocks`), и запись выглядела бы защитой, не будучи ею.
+      (when (and (string= (string-downcase (string rev)) "irreversible")
+                 need (equal need (g-bot)))
+        (err! :req id
+              "необратимое ~a требует основания степени [~a] — это дно решётки, ~
+               то есть не требует ничего.~%  Запись выглядит защитой, не будучи ею: ~
+               на дне типизируется любое основание. Назовите степень выше дна." id (g-ru need)))
+      (setf (gethash id *env*) (bnd :action :thr thr :else els :grade need)))))
 
 (defun root-known-p (name)
   "Есть ли свидетель, чей корень — NAME? Тогда NAME можно отозвать как источник."
@@ -412,6 +477,20 @@
       ((null j) (err! :unknown cn "неизвестное основание ~a" cn))
       ((not (eq (bnd-kind j) :jud)) (err! :slot cn "~a — не утверждение" cn))
       (t
+       ;; ── 🔴 ТРЕБОВАНИЕ К СТЕПЕНИ — ПРОВЕРКА ТИПИЗАЦИИ, А НЕ ГЕЙТ ────────────────
+       ;; `Typed basis a` существует, только если `req a ⊑ grade(basis)` (`formal/Act.agda`).
+       ;; Это ОШИБКА, а не замечание: `gate-fail` есть исход программы (свернётся, как
+       ;; написано), а недостаточная степень основания — программа, которой не должно быть.
+       ;; Разница ровно та, что между «веры не хватило» и «так писать нельзя».
+       (let ((need (bnd-grade a)))
+         (when (and need (not (g<= need (bnd-grade j))))
+           (err! :req an
+                 "~a требует основания не ниже [~a], а ~a имеет [~a].~%  ~
+                  Это не нехватка веры — свидетельств можно принести сколько угодно, ~
+                  происхождение от этого не изменится.~%  ~
+                  Поднять степень нечем: операции подъёма в языке НЕТ. Нужен свидетель ~
+                  нужной степени — или действие другого класса."
+                 an (g-ru need) cn (g-ru (bnd-grade j)))))
        ;; ── свёртка гейта, КОГДА свидетели литеральны; иначе честно в рантайм ──
        (let ((b (belief (bnd-f j) (bnd-c j))) (thr (bnd-thr a)))
          (cond

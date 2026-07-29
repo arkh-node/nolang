@@ -36,7 +36,10 @@
   short-roots)   ; требование к множеству не выполнено: (нужно есть)
 (defstruct (sv (:constructor sv (where why))) where why)
 (defstruct (fv (:constructor fv (action on b thr lack))) action on b thr lack)
-(defstruct (av (:constructor av (rev thr else comp))) rev thr else comp)
+(defstruct (av (:constructor av (rev thr else comp &optional need))) rev thr else comp
+  need)  ; 🔴 требуемая степень основания. Машина её НЕ проверяет: это дело типизации
+         ; (`formal/Act.agda`). Хранится ради вердикта — чтобы точка решения могла назвать,
+         ; чего действие требовало, даже когда программа уже отвергнута проверяющим.
 
 (defun jv-fc (j) (evidence->fc (jv-w+ j) (jv-w- j)))
 (defun jv-belief (j) (multiple-value-bind (f c) (jv-fc j) (* f c)))
@@ -129,6 +132,25 @@
               (push (list name grade f) out)))))
     (values (nreverse in) (nreverse out))))
 
+(defun root-best (corpus dead)
+  "Корень → его лучший (тяжелейший) свидетель: (корень имя w⁺ w⁻ степень).
+   🔴 ВЕС ЕСТЬ СВОЙСТВО КОРНЯ, А НЕ ССЫЛКИ НА НЕГО. Отсюда `mass-resp-∈` Невис
+   (`formal/SupportSet.agda`): масса читает ЧЛЕНСТВО в поддержке, а не список посылок,
+   и потому ни порядок, ни повторы, ни глубина вывода не могут её изменить —
+   не по бдительности автора, а потому что невыразимо."
+  (let ((tbl '()))
+    (dolist (w corpus tbl)
+      (destructuring-bind (name grade root f c &optional mod) w
+        (declare (ignore mod))
+        ;; нелитеральный свидетель веса не несёт — в таблицу не входит (см. check.lisp)
+        (unless (or (member name dead) (member root dead) (null f) (null c))
+          (multiple-value-bind (wp wm) (fc->evidence f c)
+            (let ((cell (assoc root tbl)))
+              (if (null cell)
+                  (push (list root name wp wm grade) tbl)
+                  (when (> (+ wp wm) (+ (third cell) (fourth cell)))
+                    (setf (cdr cell) (list name wp wm grade)))))))))))
+
 (defun red-claim (form store dead)
   ;; R-CLAIM: ⊕ есть СЛОЖЕНИЕ ВЕСОВ (АЛГЕБРА, теорема 1) — здесь видно буквально.
   ;; 🔴 Отозванный свидетель ВЫПАДАЕТ ИЗ ОСНОВАНИЯ целиком: ни веса, ни степени.
@@ -157,13 +179,24 @@
     ;; сворачивается в одного представителя — с наибольшим весом: лучше сохранившаяся
     ;; копия и есть твой лучший доступ к оригиналу. Остальные поглощаются, но НЕ молча:
     ;; поглощённые записываются и печатаются (урок хода 2 — потреблено ≠ показано).
-    (let ((groups '()))                       ; корень → список (имя . значение)
+    (let ((groups '()) (support '()))          ; корень → список (имя . значение)
       (dolist (p live)
         (unless (member p seen)
           (push p seen)
           (let ((v (gethash p store)))
             (cond
+              ;; 🔴 ВЫВЕДЕННОЕ УТВЕРЖДЕНИЕ НЕСЁТ МНОЖЕСТВО КОРНЕЙ, А НЕ ОДИН.
+              ;; Прежде у него `origin` был `nil`, и свёртка группировала по нему: два
+              ;; НЕЗАВИСИМЫХ вывода попадали в группу «nil», и один поглощался как копия
+              ;; другого (0.540 вместо 0.675). `nil` в роли корня — это молчание,
+              ;; притворившееся источником. Поддержка вывода есть ОБЪЕДИНЕНИЕ поддержек
+              ;; его посылок; степень берётся его собственная — иначе объявленная ниже
+              ;; выведенной (T-ASCRIBE) поднялась бы обратно к своему корню, то есть отмылась.
+              ((and (jv-p v) (jv-base v))
+               (dolist (r (jv-roots v)) (pushnew r support))
+               (setf grade (g-meet grade (jv-grade v))))
               ((jv-p v)
+               (when (jv-origin v) (pushnew (jv-origin v) support))
                (let ((cell (assoc (jv-origin v) groups)))
                  (if cell (push (cons p v) (cdr cell))
                      (push (list (jv-origin v) (cons p v)) groups))))
@@ -193,9 +226,17 @@
                     collapsed)))
           (dolist (m members)
             (unless (eq m best) (push (list root (car m) (car best)) collapsed)))
-          (incf w+ (jv-w+ (cdr best))) (incf w- (jv-w- (cdr best)))
-          (setf grade (g-meet grade (jv-grade (cdr best))))
-          (push root roots))))
+          ;; масса здесь БОЛЬШЕ НЕ КОПИТСЯ: она считается ниже по членству в поддержке
+          (setf grade (g-meet grade (jv-grade (cdr best))))))
+      ;; 🔴 МАССА ВЕРЫ — ПО ЧЛЕНСТВУ В ПОДДЕРЖКЕ (её `massUpTo`). Каждый корень поддержки
+      ;; вносит вес РОВНО ОДИН раз, кем бы и сколько раз на него ни сослались: отсюда даром
+      ;; и `∪-idem` (общий предок не удваивается), и `derived≡direct` (вывод не теряет
+      ;; независимого свидетельства), и `∪-comm` (порядок посылок не значит ничего).
+      (let ((tbl (root-best *corpus* dead)))
+        (dolist (r support)
+          (let ((cell (assoc r tbl)))
+            (when cell (incf w+ (third cell)) (incf w- (fourth cell))))))
+      (setf roots (reverse support)))
     ;; ОБЗОРНОЕ молчание: степени не трогает, но охват обязан остаться при утверждении
     (dolist (sname srch)
       (let ((v (gethash sname store)))
@@ -209,14 +250,15 @@
     (store-put store id
                (jv (if (and declared (g<= declared grade)) declared grade)
                    w+ w- (nreverse seen) (nreverse cover) (nreverse leaned)
-                   nil (nreverse roots) (nreverse collapsed)
+                   nil roots (nreverse collapsed)
                    dropped short-roots))))
 
 (defun red-action (form store)
   (store-put store (second form)
              (av (kw form :reversibility 'reversible)
                  (let ((r (kw form :requires))) (and (consp r) (third r)))
-                 (kw form :else) (kw form :compensated-by))))
+                 (kw form :else) (kw form :compensated-by)
+                 (let ((g (kw form :needs-grade))) (and g (parse-grade g))))))
 
 (defun red-do (form store ledger &optional done)
   ;; R-DO-PASS / R-DO-FOLD — единственное место, где программа обращается наружу.
@@ -312,14 +354,23 @@
                      (comp (and (av-p av*) (av-comp av*)))
                      (rev (and (av-p av*) (av-rev av*))))
                 (push (list :orphaned a j nb thr comp rev) out)
-                ;; 🔴 Компенсация — ДЕЙСТВИЕ, а не пометка. Сирота возместимого действия
-                ;; порождает шаг возмещения; необратимого — запись о непоправимости.
-                ;; Разница между «названо» и «сделано» здесь и проходит.
-                (cond
-                  ((and comp rev (string-equal (string rev) "compensable"))
-                   (push (list :compensating comp j nb thr a) out))
-                  ((and rev (string-equal (string rev) "irreversible"))
-                   (push (list :irreparable a j nb thr) out)))))))))))
+                ;; 🔴 КОМПЕНСАЦИЯ — ДЕЙСТВИЕ СО СВОИМ ГЕЙТОМ, а не пометка и не отмена.
+                ;; Необратимое отменить нельзя; возместимое — можно совершить ВТОРОЕ действие,
+                ;; и оно проходит СВОЙ порог, а не порог того, что рухнуло. Иначе возмещение
+                ;; наследовало бы чужое условие и совершалось бы «за компанию»: у него другая
+                ;; цена ошибки и другое основание судить.
+                ;; Возмещение может и НЕ пройти — тогда это отдельная запись, а не тишина:
+                ;; «возместить собирались, да не хватило» есть знание, и его нельзя терять.
+                (let* ((cav (and comp (gethash comp store)))
+                       (cthr (and (av-p cav) (av-thr cav)))
+                       (roots (and (jv-p nj) (jv-roots nj))))
+                  (cond
+                    ((and comp rev (string-equal (string rev) "compensable"))
+                     (if (and cthr nb (< nb cthr))
+                         (push (list :compensation-folded comp j nb cthr (- cthr nb) a) out)
+                         (push (list :compensating comp j nb (or cthr thr) a roots) out)))
+                    ((and rev (string-equal (string rev) "irreversible"))
+                     (push (list :irreparable a j nb thr) out))))))))))))
 
 ;;; ── шаг ─────────────────────────────────────────────────────────────────────
 (defun step-cfg (c)
@@ -497,9 +548,15 @@
                               не хватило ~,3f → ~a~%" a j b thr lack els))
         (:retracted (format t "~&  ✂ ОТОЗВАН свидетель ~a: ~a~%" a j))
         (:ran-on (format t "~&  ⌂ прогон на носителе ~a (склад от носителя НЕ зависит)~%" a))
+        ;; 🔴 У возмещения СВОЙ порог и СВОИ корни — оно отдельное действие, а не пометка
+        ;; на чужом. `lack` здесь несёт имя возмещаемого действия, `els` — корни основания.
         (:compensating
-         (format t "~&  ↩ ВОЗМЕЩЕНИЕ ~a: основание ~a рухнуло (вера ~,3f < порог ~,3f)~%~
-                    ~5Tсовершено, потому что действие ~a возместимо~%" a j b thr lack))
+         (format t "~&  ↩ ВОЗМЕЩЕНИЕ ~a совершено на основании ~a: вера ~,3f ≥ его порог ~,3f~%~
+                    ~5Tвозмещает ~a~@[ · корни: ~{~a~^, ~}~]~%" a j b thr lack els))
+        (:compensation-folded
+         (format t "~&  ⊘ ВОЗМЕЩЕНИЕ ~a НЕ СОВЕРШЕНО: вера ~,3f < его собственный порог ~,3f, ~
+                    не хватило ~,3f~%~5Tдействие ~a осталось без возмещения — и это ~
+                    записано, а не пропущено~%" a b thr lack els))
         (:irreparable
          (format t "~&  ✖ НЕПОПРАВИМО: ~a на основании ~a — вера ~,3f < порог ~,3f,~%~
                     ~5Tа действие необратимо. Возместить нечем. ВОТ ЗАЧЕМ ГЕЙТ.~%" a j b thr))

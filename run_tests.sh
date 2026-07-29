@@ -54,9 +54,14 @@ if command -v agda >/dev/null 2>&1; then
       # meet-lower₁/₂ с подстрочными цифрами. Многобайтные символы в скобочном классе —
       # источник тихого расхождения. Совпадать надо СТРУКТУРНО: два пробела, не-пробелы, " : ".
       #
-      # Теорем, посчитанных руками: Preservation 19 · BeliefMass 7 · ModuleImport 7 = 33.
-      # (ModuleImport добавлен Невис 29.07: sound · necessary · bottom-needed · mono ·
-      #  compose-⊓ · compose-⊥ + Preserves-⊓/⊥ как условия. Проверен мной пересборкой.)
+      # Теорем, посчитанных руками: Preservation 19 · BeliefMass 7 · ModuleImport 7 ·
+      # SupportSet 6 · Act 12 = 51.
+      # (SupportSet и Act добавлены Невис 29.07 и пересчитаны по ИМЕНАМ результатов, а не
+      #  по строкам: SupportSet — mass-resp-∈ · ∪-idem · ∪-comm · derived≡direct ·
+      #  shared-root-once · mono-∈; Act — ⊑-refl · ⊑-trans · strengthen · bottom-blocks ·
+      #  no-irreversible-on-bottom · orphan-on-retract · irreparable-on-retract ·
+      #  no-resurrection · orphan-stays · live≢orphaned · orphaned≢irreparable · live≢irreparable.
+      #  Определения — pick, massUpTo, status, _⊑_, derived, direct, irreparable, z≤n, s≤s — НЕ в счёте.)
       # (Раньше стояло 21 — занижено, считал по списку, обрезанному той самой ломаной регуляркой.)
       n=$(grep -cE '^  [^ ]+ : ' "$a")
       printf '%-24s ✓ %s утверждений уровня модуля (--safe)\n' "$a" "$n"
@@ -78,7 +83,7 @@ fi
 
 echo "────────────────────────────────────────"
 if [ $fail -eq 0 ]; then
-  echo "ВСЁ ЗЕЛЁНОЕ · законов, проверок и утверждений: $total   (из них теорем в Agda: 33)"
+  echo "ВСЁ ЗЕЛЁНОЕ · законов, проверок и утверждений: $total   (из них теорем в Agda: 51)"
 else
   echo "УПАЛО: $fail"; exit 1
 fi

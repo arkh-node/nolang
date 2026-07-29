@@ -115,4 +115,86 @@ claim c = with-coverage(a, пусто)"))
   (check "форма rule до машины доходит и молча пропускается"
          (numberp (nth-value 2 (run-nolang forms)))))
 
+(format t "~&── 🔴 G1. ОДНО ПРАВИЛО НА РАЗНЫХ РЕШЁТКАХ, БЕЗ ПЕРЕПИСЫВАНИЯ ──~%")
+;;; Наказ Невис, G1: «правило, работающее для любой решётки, удовлетворяющей условию импорта».
+;;; 💎 И вот что выяснилось делом: правила УЖЕ полиморфны — и не потому, что мы это строили,
+;;; а потому, что правило НЕ МОЖЕТ ОБЪЯВИТЬ СТЕПЕНЬ (решение хода 11, принятое из совсем
+;;; других соображений: объявленная однажды степень размножилась бы по всем применениям).
+;;; 🔴 Ограничение купило общность. Форма, которой нечего сказать о конкретной решётке,
+;;; работает на всякой — не по замыслу, а по невозможности сказать лишнее.
+(defparameter *одно-и-то-же-правило* "rule подкрепить(p, q) concludes from p, q")
+
+(defparameter *на-цепи*
+  (format nil "lattice L = слабо < средне < сильно
+~a
+witness a : сильно says \"…\" source r1 evidence 5 for 0 against
+witness b : средне says \"…\" source r2 evidence 5 for 0 against
+claim вывод = подкрепить(a, b)" *одно-и-то-же-правило*))
+
+(defparameter *на-произведении*
+  (format nil "lattice ЧА = слабо < сильно
+lattice ЧБ = шатко < твёрдо
+lattice L = ЧА * ЧБ
+~a
+witness a : (сильно, твёрдо) says \"…\" source r1 evidence 5 for 0 against
+witness b : (слабо, твёрдо) says \"…\" source r2 evidence 5 for 0 against
+claim вывод = подкрепить(a, b)" *одно-и-то-же-правило*))
+
+(check "🔴 текст правила в обеих программах ПОБУКВЕННО один"
+       (and (search *одно-и-то-же-правило* *на-цепи*)
+            (search *одно-и-то-же-правило* *на-произведении*)))
+(check "на ЦЕПИ правило даёт верную грань"
+       (eq :СРЕДНЕ (grade-at-runtime (parse *на-цепи*) 'вывод)))
+(check "на ПРОИЗВЕДЕНИИ — то же правило даёт покомпонентную грань"
+       (equal '(:СЛАБО :ТВЁРДО) (grade-at-runtime (parse *на-произведении*) 'вывод)))
+(check "…и это РАЗНЫЕ ответы: полиморфизм не совпадение"
+       (not (equal (grade-at-runtime (parse *на-цепи*) 'вывод)
+                   (grade-at-runtime (parse *на-произведении*) 'вывод))))
+(check "обе программы приняты проверяющим"
+       (every (lambda (src) (null (set-difference (errors-of (parse src))
+                                                  '(:runtime :gate-fail))))
+              (list *на-цепи* *на-произведении*)))
+(check "и статика сходится с прогоном на обеих"
+       (every (lambda (src) (let ((f (parse src)))
+                              (equal (grade-of f 'вывод) (grade-at-runtime f 'вывод))))
+              (list *на-цепи* *на-произведении*)))
+
+(format t "~&── …и ловится применение там, где условие НЕ выполняется ──~%")
+
+(check "🔴 форма степени не по решётке — правило не спасает, ошибка приходит"
+       ;; обе степени ОБЪЯВЛЕНЫ (иначе пришла бы :grade, «неизвестная степень»), но
+       ;; действующая решётка ЛИНЕЙНА, а свидетель предъявил кортеж — это :grade-shape
+       (member :grade-shape
+               (errors-of (parse (format nil "lattice ЧБ = шатко < твёрдо
+lattice L = слабо < средне < сильно
+~a
+witness a : (сильно, твёрдо) says \"…\" source r1 evidence 5 for 0 against
+witness b : средне says \"…\" source r2 evidence 5 for 0 against
+claim вывод = подкрепить(a, b)" *одно-и-то-же-правило*)))))
+(check "🔴 правило поверх ДУРНОГО импорта: условие φ не выполнено — импорт отвергнут"
+       (member :import
+               (errors-of (parse (format nil "lattice ЧА = слабо < сильно
+lattice ЧБ = шатко < твёрдо
+lattice ИСТОЧНИК = ЧА * ЧБ
+lattice L = молчание < образ < традиция < строго
+import ЧУЖОЙ lattice ИСТОЧНИК via (слабо, шатко) -> молчание, (слабо, твёрдо) -> традиция,
+                                  (сильно, шатко) -> образ, (сильно, твёрдо) -> строго
+~a
+witness a of ЧУЖОЙ : (сильно, твёрдо) says \"…\" source r1 evidence 5 for 0 against
+witness b of ЧУЖОЙ : (слабо, твёрдо) says \"…\" source r2 evidence 5 for 0 against
+claim вывод = подкрепить(a, b)" *одно-и-то-же-правило*)))))
+(check "…а с ВЕРНЫМ φ то же правило поверх импорта проходит"
+       (null (set-difference
+              (errors-of (parse (format nil "lattice ЧА = слабо < сильно
+lattice ЧБ = шатко < твёрдо
+lattice ИСТОЧНИК = ЧА * ЧБ
+lattice L = молчание < образ < традиция < строго
+import ЧУЖОЙ lattice ИСТОЧНИК via (слабо, шатко) -> молчание, (слабо, твёрдо) -> молчание,
+                                  (сильно, шатко) -> образ, (сильно, твёрдо) -> традиция
+~a
+witness a of ЧУЖОЙ : (сильно, твёрдо) says \"…\" source r1 evidence 5 for 0 against
+witness b of ЧУЖОЙ : (слабо, твёрдо) says \"…\" source r2 evidence 5 for 0 against
+claim вывод = подкрепить(a, b)" *одно-и-то-же-правило*)))
+              '(:runtime :gate-fail))))
+
 (format t "~%── ALL GREEN · проверок: ~a ──~%" *n*)

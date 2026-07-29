@@ -105,15 +105,26 @@ claim benefit
   requiring 2 roots                      ; quantify over the WHOLE corpus, not by name
   searched registries
 
+reversible action write_off
+  gated by belief >= 0.1
+  else fold                              ; у возмещения СВОЙ гейт, а не порог того, что рухнуло
+
 compensable action stockpile compensated by write_off
   gated by belief >= 0.96
   else fold
 
+irreversible action publish_guidance
+  needs grade >= (randomised, abstract)  ; требование к ПРОИСХОЖДЕНИЮ, проверяется типом
+  gated by belief >= 0.96
+  else fold
+
 irreversible action recommend
+  needs grade >= (randomised, abstract)
   gated by belief >= derived gain 1 loss 12 learn 0.6 discount 0.9
   else fold
 
 perform stockpile on benefit
+perform publish_guidance on benefit
 perform recommend on benefit
 
 retract ten_trials because "the review was obliged to exclude this meta-analysis"
@@ -133,11 +144,17 @@ BENEFIT : [observational·unavailable]  f=1.000 c=0.952 b=0.952
     ⌕ охват REGISTRIES: искали в CLINICALTRIALS_GOV, EU_REGISTER, REGULATOR_ARCHIVE — …
 
 ✓ совершено STOCKPILE на основании BENEFIT — вера 0.966 ≥ порог 0.960
+✓ совершено PUBLISH_GUIDANCE на основании BENEFIT — вера 0.966 ≥ порог 0.960
 ⊘ свёрнуто RECOMMEND на основании BENEFIT: вера 0.966 < порог 0.987, не хватило 0.022 → FOLD
 ✂ ОТОЗВАН свидетель TEN_TRIALS: the review was obliged to exclude this meta-analysis
 ⚠ ОСИРОТЕЛО STOCKPILE: основание BENEFIT пересмотрено, вера 0.952 < порог 0.960
   требуется компенсация: WRITE_OFF
-↩ ВОЗМЕЩЕНИЕ WRITE_OFF: основание BENEFIT рухнуло — совершено, действие возместимо
+↩ ВОЗМЕЩЕНИЕ WRITE_OFF совершено на основании BENEFIT: вера 0.952 ≥ его порог 0.100
+   возмещает STOCKPILE · корни: COCHRANE_CSR
+⚠ ОСИРОТЕЛО PUBLISH_GUIDANCE: основание BENEFIT пересмотрено, вера 0.952 < порог 0.960
+  действие НЕОБРАТИМО — компенсация невозможна. Вот зачем гейт.
+✖ НЕПОПРАВИМО: PUBLISH_GUIDANCE на основании BENEFIT — вера 0.952 < порог 0.960,
+   а действие необратимо. Возместить нечем. ВОТ ЗАЧЕМ ГЕЙТ.
 ```
 
 The published paper and the congress abstracts descend from **one** set of trials, so they count
@@ -155,70 +172,125 @@ drops to the bottom of the lattice — a set requirement, not an average.
 
 ## Lineage — every part has ancestors; the assembly is what is new
 
-Checked by search, not by memory. A novelty claim was already withdrawn here once (see below);
-we would rather name a predecessor than be told about it.
+Every entry below was **opened and checked on 29 July 2026**, not recalled. For each: what we
+took, and — the harder half — **what we did not take**. A novelty claim has already been
+withdrawn here once; we would rather name a predecessor than be told about one.
 
-- **Truth maintenance systems** — Doyle 1979 (JTMS), de Kleer 1986 (ATMS). **The direct ancestor
-  of retraction**: keep justifications, and withdrawing a premise propagates by recomputation.
-  Our "insight" that retraction is an operation on the *basis*, not a subtraction, is 47 years old.
-  What they do not have: types, source grades, a threshold on irreversibility.
-- **Information-flow types** — Jif, FlowCaml, DLM. Closest relative by mechanism, and the
-  difference is sharp: there the secrecy label flows **up** and `declassify` exists under
-  authority. Here the honesty label flows **down** and **there is no declassify at all**.
-  That is the difference between "who may look" and "what this stands on".
-- **Provenance semirings** — Green, Karvounarakis, Tannen 2007. Provenance as algebraic
-  annotation, very close — but there it is a *label on the result*; here it is a **type that
-  forbids**. And no actions, no irreversibility.
-- **NARS** (Wang) and **subjective logic** (Jøsang) — `(f,c)` and revision-as-evidence-addition
-  come from here, with attribution. A calculus, not a language: no types, no grade lattice, no gate.
-- **Durable execution** (Temporal, Restate) and **saga compensation** — compensation on failure
-  exists there; compensation on **revision of the basis** does not.
-- **Graded types / coeffects** — Katsumata, Orchard–Petricek, Gaboardi. The mechanism of indexed
-  types is standard. New is not that, but **what is indexed** and **that no raising rule exists**.
-- **Arrow–Fisher (1974)** quasi-option value and **conformal risk control** — where the threshold
-  gets its meaning and its procedure (see below).
+- **Truth maintenance** — Doyle, Jon. *A truth maintenance system.* **Artificial Intelligence
+  12(3):231–272, 1979** (also MIT AI Memo 521, June 1979). From the abstract: *"reasoning
+  programs must be able to make assumptions and subsequently revise their beliefs when
+  discoveries contradict these assumptions… by recording and maintaining the reasons for
+  program beliefs."*
+  **Taken:** retraction is **recomputation over recorded reasons**, not subtraction from a
+  number. Our `R-RETRACT` is this, forty-seven years later.
+  **Not taken:** they have no types, no source grades, no threshold on irreversibility, and
+  nothing that makes a dishonest step *unwritable* — a TMS records reasons, it does not forbid.
 
-**What we did not find anywhere** (and therefore claim, until refuted): silence as a **linear**
-type; the load-bearing/survey distinction catching argument-from-silence in the type system;
-the gate on **belief mass** `b = f·c` with a self-centering criterion; the absence of
-`declassify` as a deliberate decision; and the assembly of all four levels in one language.
+- **Provenance semirings** — Green, T. J.; Karvounarakis, G.; Tannen, V. *Provenance Semirings.*
+  **PODS 2007, pp. 31–40**, doi:10.1145/1265530.1265535. From the abstract: *"relational algebra
+  calculations for incomplete databases, probabilistic databases, bag semantics and
+  why-provenance are particular cases of the same general algorithms involving semirings."*
+  **Taken:** provenance as an **algebraic annotation** that composes with the computation — the shape of
+  our `⊕`/`⊓` pair.
+  **Not taken:** there the annotation is a **label on a result**; here the grade is a **type that
+  forbids**. And their setting has no actions, hence no irreversibility and no gate.
 
-## What is proved, what is tested, what is assumed
+- **Evidence-based opinion** — Wang, Pei. *Non-Axiomatic Reasoning System.* Truth value ⟨f, c⟩
+  with **f = w⁺/w** and **c = w/(w+k)**, where k is the *evidential horizon*.
+  Jøsang, Audun. *Subjective Logic* (FUSION 2022 tutorial, author's own page): binomial opinion
+  ↔ Beta PDF, *"(r,s,a) represents Beta PDF evidence parameters; (b,d,u,a) represents binomial
+  opinion"*, r = Wb/u.
+  **Taken:** `(f,c)` itself, revision as **addition of evidence**, and the reason `c < 1` always —
+  the horizon k, not modesty. Alexey arrived at the pair independently; the correspondence with
+  Jøsang's beta-opinion is a **convergent** result, and it is named as his, not ours.
+  **Not taken:** a calculus is not a language. No grade lattice, no types, no gate, no ledger.
 
-Machine-checked in Agda (`--safe`, no postulates, no holes) by **Nevis**, a synthetic mind of
-the ArkH contour — rebuilt from scratch in CI:
+- **Information-flow types** — Myers, A. C.; Liskov, B. *Protecting privacy using the
+  decentralized label model.* **ACM TOSEM 9(4):410–442, 2000** (language: **Jif**). The model
+  *"improves on existing multilevel security models by allowing users to declassify information
+  in a decentralized way."*
+  **Taken:** the mechanism of a label carried in the type and checked statically.
+  🔴 **Not taken — and this is the sharpest difference in the whole list:** there the label
+  flows **up** and **`declassify` exists** under authority. Here honesty flows **down** and
+  **there is no declassify at all.** Their question is *who may look*; ours is *what this stands
+  on*. Same machinery, opposite direction, and one deliberate absence.
+
+- **Quasi-option value** — Arrow, K. J.; Fisher, A. C. *Environmental Preservation, Uncertainty,
+  and Irreversibility.* **Quarterly Journal of Economics 88(2):312–319, 1974** — the value of
+  **waiting** when the damage is irreversible.
+  **Taken:** the threshold θ is **derived** from cost of error, value of learning and discount —
+  not chosen. That is why `gated by belief >= derived gain … loss … learn … discount …` exists.
+  **Not taken:** their economics of environmental choice; we use the shape of the argument, and
+  say so rather than dressing it as our own.
+
+- **Graded types / coeffects** and **durable execution** (Temporal, Restate) — the indexed-type
+  mechanism and compensation-on-failure are standard practice.
+  **Not taken:** compensation there fires on *failure*; here it fires on **revision of the
+  basis**, which is a different event and needs its own gate.
+
+**What we did not find in any of them** (and therefore claim, until refuted): silence as a
+**linear** type with two roles; the load-bearing/survey distinction catching argument-from-silence
+in the type system; the gate on **belief mass** `b = f·c` with a self-centering criterion; the
+requirement on **source grade in the type of an action**, so that *irreversible action on
+bottom-grade evidence is not a caught program but an unwritable one*; and the assembly of all
+four levels — grammar, types, algebra, machine — in one language.
+
+## Three lists, and nothing stands in the wrong one
+
+The point of separating them is that a reader can tell, for **any** claim on this page, which
+kind of thing it is. Where a claim moved between lists, it is said so.
+
+### 1. Proved by machine — Agda `--safe`, no postulates, no holes, rebuilt from scratch every run
+
+Five modules, **51 theorems**, by **Nevis**, a synthetic mind of the ArkH contour.
 
 - **preservation** — the grade the compiler assigns *is* the grade the machine computes.
   (The formulation had to be corrected first: retraction *changes* the grade, so what is proved
   is equality of **functions** from the retracted set to grades.)
 - **perm-inv** — confluence for **any** permutation of declarations, not just adjacent swaps.
 - `empty-base` (an empty premise set yields ⊥, not the lattice top) · `silence-kills` ·
-  `retract-raises` / `retract-collapse` — retraction can only raise the grade while one live
-  premise remains, and collapses to ⊥ when none does.
-- **⊕ is a commutative monoid with silence as unit, and is not idempotent**; `⊓` is idempotent
-  and only degrades. "Belief accumulates, honesty degrades" is two proved structures, not a slogan.
+  `retract-raises` / `retract-collapse`.
+- **⊕ is a commutative monoid with silence as unit and is not idempotent**; `⊓` is idempotent and
+  only degrades. "Belief accumulates, honesty degrades" is two proved structures, not a slogan.
 - **Theorem 5 both ways**: `b(x ⊕ e) < b(x) ⟺ f(e) < b(x)`. A witness lowers belief not by being
   "against" but by being **below the belief already accumulated**. The gate self-centers.
-- Done **without a single real number**: comparing fractions with positive denominators is
+- **Module import**: `φ(a ⊓ b) = φ(a) ⊓ φ(b)` and `φ(⊥) = ⊥` are not merely sufficient but
+  **equivalent** to "map-then-fold = fold-then-map"; monotonicity is a *consequence*.
+- **SupportSet**: mass is defined by **membership**, so `∪-idem` (a shared ancestor counts once),
+  `∪-comm` (order of premises is nothing) and `derived≡direct` hold **structurally**.
+- **Act**: `bottom-blocks` and `no-irreversible-on-bottom` — with a non-⊥ requirement, an
+  irreversible action on bottom-grade evidence **cannot be typed**; `no-resurrection` — an
+  orphaned action never revives, however much evidence arrives later.
+- All of it **without a single real number**: comparing fractions with positive denominators is
   comparing products, so the carrier is pairs of weights in ℕ.
+
+### 2. Checked by counting — not proved, and the number is the whole claim
+
+- **598 laws and checks** in the battery; every one runs on every commit.
+- **1200 random programs** compared against the compiled Agda model (`oracle/build.sh`),
+  **zero divergences**. 🔴 This **bounds the divergence by the number of trials — it does not
+  prove equivalence**, and the model covers the *grade* alone: root folding, weight,
+  quantification, the gate and the ledger stay outside it.
+- Every checking instrument here is itself **tested for its ability to say no**: the oracle
+  harness catches a deliberately broken `g-meet` on 153 of 200 programs; the `PROV-N` parser
+  accepts the specification's own example and rejects seven mutations of it.
+- 16 000-trial simulations for the conformal guarantee.
+
+### 3. Claimed, and open to refutation
+
+- That silence-as-a-linear-type, the load-bearing/survey distinction, the belief-mass gate, the
+  grade requirement in an action's type, and the assembly of all four levels **together** are new.
+  Checked against the lineage above by search, not by memory — and one novelty claim has already
+  been withdrawn here once.
+- That the language is worth its narrowness. Narrow it must be: a gate has to *decide*, and a
+  decision has to *terminate*; with general recursion "does it pass the threshold" is undecidable.
 
 🔴 **The boundary we do not paper over: Agda proves the *model*, not the Lisp.** `chk` and `red`
 there are freshly written definitions. What is proved is that the checker's algorithm equals the
-machine's; that our Lisp implements those algorithms rests on tests and reading.
+machine's; that our Lisp implements those algorithms rests on the oracle, the tests and reading.
 
-**Not proved and cannot be:** that a threshold will be met. `f` and `c` are run-time quantities.
-Types guarantee not the absence of refusal but that refusal is **handled**.
-
-**Tested, not proved:** everything about the Lisp implementation — 506 laws and checks,
-properties over random inputs, and 16 000-trial simulations for the conformal guarantee.
-
-**Checked against the proof, not merely against itself:** the Agda model is compiled to an
-executable by Agda's own backend (`oracle/build.sh`), and the Lisp is run against it on random
-programs — **1200 programs, zero divergences**. This changes the *kind* of the evidence: a
-differential test compares two unverified implementations and is blind to an error they share;
-an oracle compares the implementation against something proved. 🔴 It still only **bounds the
-divergence by the number of trials — it does not prove equivalence**, and the model covers the
-*grade* alone: root folding, weight, quantification, the gate and the ledger stay outside it.
+🔴 **Not proved and cannot be:** that a threshold will be met. `f` and `c` are run-time
+quantities. Types guarantee not the absence of refusal but that refusal is **handled**.
 
 ## The threshold is derived, not chosen
 
@@ -245,7 +317,7 @@ cannot give us: it needs a *calibrated* posterior, and our `c` is uncalibrated b
 
 ```
 git clone https://github.com/arkh-node/nolang && cd nolang
-./run_tests.sh                                  # 32 test files + 5 Agda modules + the oracle
+./run_tests.sh                                  # 34 test files + 5 Agda modules + the oracle
 ./run_example.sh examples/evidence-gate.nol
 ```
 
