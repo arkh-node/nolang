@@ -1,0 +1,45 @@
+lattice design       = observational < randomised
+lattice transmission = unavailable < abstract < published < full_report
+lattice grade        = design * transmission   ; grades need not be linearly ordered
+
+witness kaiser2003 : (randomised, published)
+  says "meta-analysis of ten manufacturer trials: fewer complications"
+  source ten_trials                      ; the ROOT: channels of one source count once
+  evidence 2 for 0 against               ; counts, not (f,c) — the carrier, not the chart
+
+witness eight_abstracts : (randomised, abstract)
+  says "eight of the ten datasets exist only as congress abstracts"
+  source ten_trials
+  evidence 8 for 0 against
+
+witness cochrane2014 : (randomised, full_report)
+  says "twenty trials, read from clinical study reports rather than papers"
+  source cochrane_csr
+  evidence 20 for 0 against
+
+witness press_release : (observational, unavailable)
+  says "manufacturer statement to the press"
+  source press_office
+  evidence 1 for 3 against
+
+ask registries
+  in clinicaltrials_gov, eu_register, regulator_archive
+  found nothing because "full reports of the ten trials are not public"
+
+claim benefit
+  from all where grade >= (randomised, abstract)
+  requiring 2 roots                      ; quantify over the WHOLE corpus, not by name
+  searched registries
+
+compensable action stockpile compensated by write_off
+  gated by belief >= 0.96
+  else fold
+
+irreversible action recommend
+  gated by belief >= derived gain 1 loss 12 learn 0.6 discount 0.9
+  else fold
+
+perform stockpile on benefit
+perform recommend on benefit
+
+retract ten_trials because "the review was obliged to exclude this meta-analysis"

@@ -1,0 +1,128 @@
+;;;; nolang src — decide. ТОЧКА РЕШЕНИЯ КАК API (ступень 4; наказ Невис, раздел F).
+;;;;
+;;;; 🔴 ЗАЧЕМ. Это кратчайший путь к тому, чтобы протоколом кто-то ПОЛЬЗОВАЛСЯ, а
+;;;; использование и превращает нотацию в язык. Один вход: программа → вердикт + журнал.
+;;;; Образец — точка решения OPA: подал запрос, получил ответ, и весь язык живёт внутри.
+;;;;
+;;;; 🔴 F2, И ЭТО НЕСУЩЕЕ: ВЕРДИКТ НИКОГДА НЕ ГОЛОЕ «ДА/НЕТ».
+;;;; Голое «да» есть ровно то, против чего заведён весь язык: решение без основания.
+;;;; Поэтому структура вердикта не имеет поля «разрешено» как единственного, а печать
+;;;; ВСЕГДА выводит основание, степень, веру, порог и НЕДОСТАЧУ (или запас). Отдельного
+;;;; способа напечатать «да» здесь нет — как нет способа напечатать утверждение без охвата.
+;;;;
+;;;; 🔴 И ЕЩЁ ОДНО, ПОСЛЕ НАХОДКИ ВТОРОГО ДОМЕНА (ПРИМЕР_ФАРМАКОЛОГИЯ.md, находка 1).
+;;;; Гейт стоит на массе веры и СТЕПЕНЬ НЕ ВИДИТ: в фармакологическом примере необратимое
+;;;; действие прошло порог, стоя на дне решётки. Менять семантику гейта я не стал — это
+;;;; решение о языке, а не правка. Но вердикт ОБЯЗАН назвать степень рядом с верой, и когда
+;;;; степень равна дну — сказать это отдельной красной строкой. Гейт не судит по степени;
+;;;; человек, читающий вердикт, — может.
+
+(load (merge-pathnames "provn.lisp" *load-pathname*))
+(load (merge-pathnames "parse.lisp" *load-pathname*))
+
+;;; 🔴 СТЕПЕНЬ ЛЕЖИТ ЗДЕСЬ ГОТОВОЙ СТРОКОЙ, А НЕ КЛЮЧОМ — и это не удобство, а необходимость.
+;;; Решётка живёт РОВНО ОДИН ПРОГОН (`with-prelude`): к моменту печати вердикта её уже нет,
+;;; и ни `g-ru`, ни сравнение с дном снаружи не работают. Первая версия печатала степень
+;;; верно случайно (через запасной путь `g-ru`), а красную строку про дно не печатала вовсе:
+;;; сравнивала с дном ПРЕЛЮДИИ. Что известно в момент решения — сохраняем в момент решения.
+(defstruct (verdict (:constructor verdict (kind action basis grade-text grade-bottom-p
+                                           belief threshold margin
+                                           reversibility else compensated coverage leaned)))
+  kind          ; :performed | :folded | :orphaned | :irreparable
+  action basis
+  grade-text    ; степень, уже напечатанная в решётке ПРОГРАММЫ
+  grade-bottom-p; была ли она дном — посчитано там же, где решётка ещё жива
+  belief threshold
+  margin        ; b − θ: положительное — запас, отрицательное — НЕДОСТАЧА
+  reversibility else compensated
+  coverage      ; охват основания: где искали и не нашли
+  leaned)       ; на каких молчаниях стоит основание
+
+(defun v-lack (v) (max 0.0 (- (verdict-margin v))))
+
+(defun decide (src)
+  "Программа (текст) → (values вердикты журнал ошибки-разбора-и-проверки).
+   Ничего не пересчитывает сверх обычного прогона: точка решения есть ВИД на прогон,
+   а не вторая семантика. Заведись здесь свой счёт — он разошёлся бы с машиной."
+  (multiple-value-bind (forms errs) (compile-nolang src)
+    ;; 🔴 Решётка программы жива только внутри прогона, поэтому ВСЁ, что от неё зависит
+    ;; (печатное имя степени и «дно ли это»), берётся ЗДЕСЬ, а не при печати.
+    (with-prelude
+      (dolist (f forms) (when (string= (head-of f) "lattice") (chk-lattice f)))
+      (multiple-value-bind (store ledger) (run-nolang forms)
+        (let ((out '()))
+          (dolist (e ledger)
+            (destructuring-bind (kind a j &optional b thr lack els) e
+              (declare (ignore lack els))
+              ;; 🔴 Свёрток лежит и на складе (значением), и в журнале (записью). Берём ТОЛЬКО
+              ;; из журнала: обход склада добавил бы второй вердикт о том же решении.
+              ;; Отказ остаётся значением на складе — но вердикт о нём один.
+              (when (member kind '(:performed :folded :orphaned :irreparable))
+                (let* ((av* (gethash a store))
+                       (jv* (gethash j store))
+                       (thr* (or thr (and (av-p av*) (av-thr av*))))
+                       (b* (or b (and (jv-p jv*) (jv-belief jv*))))
+                       (g (and (jv-p jv*) (jv-grade jv*))))
+                  (push (verdict kind a j
+                                 (and g (g-ru g))
+                                 (and g (equal g (g-bot-of *lattice*)))
+                                 b* thr*
+                                 (and b* thr* (- b* thr*))
+                                 (and (av-p av*) (av-rev av*))
+                                 (and (av-p av*) (av-else av*))
+                                 (and (av-p av*) (av-comp av*))
+                                 (and (jv-p jv*) (jv-cover jv*))
+                                 (and (jv-p jv*) (jv-leaned jv*)))
+                        out)))))
+          (values (nreverse out) ledger errs))))))
+
+(defun show-verdict (v &optional (s t))
+  "Единственный способ напечатать вердикт. Голого «да» тут нет и быть не может."
+  (format s "~&┌ ~a — ~a~%"
+          (verdict-action v)
+          (ecase (verdict-kind v)
+            (:performed "СОВЕРШЕНО")
+            (:folded "СВЁРНУТО (отказ гейта — значение, а не ошибка)")
+            (:orphaned "ОСИРОТЕЛО (основание рухнуло ПОСЛЕ действия)")
+            (:irreparable "НЕПОПРАВИМО")))
+  (format s "│ основание: ~a~@[  степень: [~a]~]~%"
+          (verdict-basis v) (verdict-grade-text v))
+  (format s "│ вера ~,4f · порог ~,4f · ~a ~,4f~%"
+          (or (verdict-belief v) 0) (or (verdict-threshold v) 0)
+          (if (and (verdict-margin v) (minusp (verdict-margin v))) "НЕДОСТАЧА" "запас")
+          (abs (or (verdict-margin v) 0)))
+  ;; 🔴 недостача — это ЗАКАЗ НА РАБОТУ, а не приговор: сказано, сколько веры не хватило
+  (when (and (verdict-margin v) (minusp (verdict-margin v)))
+    (format s "│ 🔴 не хватило ~,4f массы веры — вот размер недостающего свидетельства~%"
+            (v-lack v)))
+  ;; 🔴 степень называется РЯДОМ с верой, хотя гейт её не смотрит (см. шапку файла)
+  (when (verdict-grade-bottom-p v)
+    (format s "│ 🔴 СТЕПЕНЬ ОСНОВАНИЯ — ДНО РЕШЁТКИ. Гейт её не смотрит: он стоит на массе~%~
+               │    веры. Решение прошло по объёму свидетельств, а не по их происхождению.~%"))
+  (dolist (l (verdict-leaned v))
+    (format s "│ 🔴 опирается на молчание ~a: искали в ~{~a~^, ~} — ~a~%"
+            (first l) (second l) (third l)))
+  (dolist (c (verdict-coverage v))
+    (format s "│ ⌕ охват ~a: искали в ~{~a~^, ~} — ~a~%" (first c) (second c) (third c)))
+  (when (null (verdict-coverage v))
+    (format s "│ ⌕ охват не заявлен — где НЕ искали, не сказано~%"))
+  (when (verdict-reversibility v)
+    (format s "│ обратимость: ~a~@[  · возмещается: ~a~]~%"
+            (string-downcase (string (verdict-reversibility v))) (verdict-compensated v)))
+  (when (and (eq (verdict-kind v) :irreparable))
+    (format s "│ ✖ возместить нечем. ВОТ ЗАЧЕМ ГЕЙТ.~%"))
+  (format s "└~%"))
+
+(defun decide-and-show (src &optional (s t))
+  "Точка решения целиком: программа → напечатанные вердикты + журнал + экспорт наружу."
+  (multiple-value-bind (вердикты ledger errs) (decide src)
+    (let ((настоящие (set-difference (mapcar #'terr-code errs) '(:runtime :gate-fail))))
+      (when настоящие
+        (format s "~&ПРОГРАММА ОТКЛОНЕНА ПРОВЕРЯЮЩИМ: ~{~a~^, ~}~%" настоящие)
+        (return-from decide-and-show (values nil ledger errs))))
+    (if (null вердикты)
+        ;; 🔴 «решений не было» — тоже ответ, и он обязан быть сказан словами
+        (format s "~&НИ ОДНОГО РЕШЕНИЯ: в программе нет ни совершённых действий, ни свёртков.~%~
+                   Это не отказ и не разрешение — это отсутствие вопроса.~%")
+        (dolist (v вердикты) (show-verdict v s)))
+    (values вердикты ledger errs)))

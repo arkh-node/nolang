@@ -4,3 +4,8 @@ __pycache__/
 *.log
 .DS_Store
 _internal/
+oracle/build/
+*.agdai
+*.bak
+*.bak_*
+УРОЖАЙ_из_статьи_Свидетель.md
