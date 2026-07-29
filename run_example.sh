@@ -16,7 +16,8 @@ cat > /tmp/_nol_run.lisp <<LISP
                  ;; замечания печатаем и при принятой программе: «свернётся, не хватило
                  ;; столько-то» — ради этого статическая свёртка и нужна
                  (when errs (diagnose forms)))))
-    (multiple-value-bind (store ledger) (run-nolang forms :carrier :морф)
-      (show-run store ledger))))
+    (let ((отклонено (set-difference (mapcar #'terr-code errs) '(:runtime :gate-fail))))
+      (multiple-value-bind (store ledger) (run-nolang forms :carrier :морф)
+        (show-run store ledger :rejected (and отклонено t))))))
 LISP
 sbcl --script /tmp/_nol_run.lisp
