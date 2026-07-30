@@ -215,4 +215,58 @@
 (format t "~%── журнал непоправимого ──~%")
 (show-ledger (ledger-of *необратимое*))
 
+(format t "~&── 🔴 РАЗРЕШЕНИЕ И ЕГО ОТЗЫВ: ТРЕТЬЯ ОСЬ, ЧЕТВЁРТЫЙ СТАТУС ──~%")
+;;; Разрешение НЕ на решётке основания: свидетельство отвечает «что есть», разрешение —
+;;; «что можно». Отзыв права основания не трогает: вера прежняя, свидетели целы, а действие
+;;; стало НЕПРАВОМЕРНЫМ. Доказано: `formal/Act.agda` — `revoke-keeps-typing`, `orphan-outranks`,
+;;; `no-perm-never-unauthorized`.
+(defparameter *с-правом*
+  '((witness w "…" :grade строго :f 0.9 :c 0.6 :source (r1))
+    (witness w2 "…" :grade строго :f 0.9 :c 0.6 :source (r2))
+    (claim осн :grade строго (from w w2))
+    (action пуш :reversibility irreversible :needs-grade строго
+            :permission ("пуш разрешаю" Алексей "2026-07-29T01:37")
+            :requires (>= belief 0.5) :else fold)
+    (do пуш осн)
+    (revoke Алексей :reason "передумал")))
+
+(let ((лог (ledger-of *с-правом*)))
+  (check "🔴 отзыв права даёт ЧЕТВЁРТЫЙ статус — неправомерность"
+         (find :unauthorized лог :key #'first))
+  (check "…и это НЕ осиротение: основание цело"
+         (not (find :orphaned лог :key #'first)))
+  (check "…вера в вердикте прежняя, выше порога — рухнуло ПРАВО, а не опора"
+         (let ((e (find :unauthorized лог :key #'first)))
+           (and e (>= (fourth e) (fifth e)))))
+  (check "…и цитата, на которую ссылались, названа"
+         (search "пуш разрешаю"
+                 (with-output-to-string (*standard-output*) (show-ledger лог))))
+  (check "запись об отзыве права стоит отдельно от записи о совершении"
+         (and (find :revoked лог :key #'first) (find :performed лог :key #'first))))
+
+(format t "~&── проверки на отзыв: три случая ──~%")
+
+(check "(1) отзыв того, чего никто не давал — :unknown"
+       (member :unknown (errors-of '((revoke Алексей :reason "…")))))
+(check "🔴 (2) отзыв ЧУЖОГО разрешения — НЕ :unknown, а отдельная ошибка права"
+       (member :authority
+               (errors-of (append (butlast *с-правом* 2)
+                                  '((revoke Эмма :reason "…"))))))
+(check "…и сообщение объясняет, что право распоряжаться чужим словом само есть право"
+       (let ((e (find :authority (nth-value 1 (check-program
+                                              (append (butlast *с-правом* 2)
+                                                      '((revoke Эмма :reason "…")))))
+                      :key #'terr-code)))
+         (and e (search "кто дал, тот и отзывает" (terr-text e)))))
+(check "🔴 (3) отзыв ПОСЛЕ совершения назван фактом о прошлом, а не запретом"
+       (let ((e (find :runtime (nth-value 1 (check-program *с-правом*)) :key #'terr-code)))
+         (and e (search "факт о прошлом" (terr-text e))
+              (search "Основание при этом ЦЕЛО" (terr-text e)))))
+(check "наружу без разрешения не разбирается вовсе (11-е незаписываемое состояние)"
+       (not (parse-ok? "lattice L = a < b
+irreversible outward action пуш needs grade >= b gated by belief >= 0.5 else fold")))
+(check "…а внутрь — законно без разрешения"
+       (parse-ok? "lattice L = a < b
+irreversible internal action ротация needs grade >= b gated by belief >= 0.5 else fold"))
+
 (format t "~%── ALL GREEN · проверок: ~a ──~%" *n*)
