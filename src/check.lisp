@@ -31,6 +31,11 @@
 
 (defun look (id) (gethash id *env*))
 
+(defun chk-horizon (form)
+  "Горизонт программы. 🔴 Ставится в ПРЕДПРОХОДЕ, до чтения свидетелей: их веса считаются
+   из (f,c) через `k`, и объявленный позже горизонт пересчитал бы уже прочитанное."
+  (setf *k* (float (second form) 1.0)))
+
 (defun chk-lattice (form)
   ;; (lattice ИМЯ молчание образ традиция строго)   ← линейная, снизу вверх
   ;; (lattice ИМЯ :product надёжность достоверность) ← произведение ранее объявленных
@@ -197,9 +202,12 @@
       (setf g nil))
     ;; 🔴 КОРЕНЬ свидетеля — ближайший известный источник; нет источника → сам себе корень.
     (let ((root (or (first (kw form :source)) id)))
+      (multiple-value-bind (ff cc)
+        (if (kw form :w+) (evidence->fc (kw form :w+) (kw form :w- 0.0))
+            (values (kw form :f 0.9) (kw form :c 0.8)))
       (setf (gethash id *env*)
-            (bnd :jud :grade (or g (g-bot)) :f (kw form :f 0.9) :c (kw form :c 0.8)
-                 :origin root :roots (list root))))))
+            (bnd :jud :grade (or g (g-bot)) :f ff :c cc
+                 :origin root :roots (list root)))))))
 
 (defun chk-ask (form)
   ;; (ask ID :in (corpus library) :reason "…")  → молчание, ЛИНЕЙНОЕ
@@ -231,17 +239,23 @@
   ;; так что к моменту чтения свидетеля модуль обязан быть зарегистрирован.
   (let ((out '()))
     (dolist (f forms (nreverse out))
+      (when (and (consp f) (string= (head-of f) "horizon")) (chk-horizon f))
+      ;; 🔴 Горизонт — как решётка: ставится ДО чтения свидетелей, иначе их (f,c) считались бы
+      ;; не тем `k`, который объявила программа.
+      (when (and (consp f) (string= (head-of f) "horizon")) (chk-horizon f))
       (when (and (consp f) (string= (head-of f) "lattice")) (chk-lattice f))
       (when (and (consp f) (string= (head-of f) "import"))  (register-import f))
       (when (and (consp f) (string= (head-of f) "witness"))
         (let* ((mod (kw f :module))
                (raw (parse-grade (kw f :grade)))
                (g   (if mod (grade-through-module mod raw) raw)))
-          (push (list (second f)
-                      (or g (g-bot))
-                      (or (first (kw f :source)) (second f))
-                      (kw f :f 0.9) (kw f :c 0.8))
-                out))))))
+          ;; счёт, если он есть, переводится в (f,c) ЗДЕСЬ — уже с горизонтом программы
+          (multiple-value-bind (ff cc)
+              (if (kw f :w+) (evidence->fc (kw f :w+) (kw f :w- 0.0))
+                  (values (kw f :f 0.9) (kw f :c 0.8)))
+            (push (list (second f) (or g (g-bot))
+                        (or (first (kw f :source)) (second f)) ff cc)
+                  out)))))))
 
 (defun root-best-c (dead)
   "Корень → его тяжелейший свидетель: (корень имя f c). Свой обход, не общий с машиной.
@@ -459,7 +473,8 @@
              (clrhash *env*) (clrhash *sil*)
              (dolist (f prefix)
                (let ((h (head-of f)))
-                 (cond ((string= h "lattice") (chk-lattice f))
+                 (cond ((string= h "horizon") (chk-horizon f))
+                       ((string= h "lattice") (chk-lattice f))
                        ;; регистрация, а не проверка: об ошибке импорта уже сказано один раз
                        ((string= h "import")  (register-import f))
                        ((string= h "witness") (chk-witness f))
@@ -554,10 +569,10 @@
 ;; проверяющего доходит только как запись в тексте программы. Проверять нечего — проверяется
 ;; каждое РАСКРЫТОЕ применение, на своих конкретных степенях.
 (assert-covers "check-program"
-               '("lattice" "import" "retract" "revoke" "witness" "ask" "claim" "action" "do")
+               '("lattice" "horizon" "import" "retract" "revoke" "witness" "ask" "claim" "action" "do")
                :skip '("rule"))
 ;; перепрогон внутри chk-retract действий не совершает — то же основание, что у `replay`
-(assert-covers "chk-retract/перепрогон" '("lattice" "import" "witness" "ask" "claim" "action")
+(assert-covers "chk-retract/перепрогон" '("lattice" "horizon" "import" "witness" "ask" "claim" "action")
                :skip '("do" "retract" "revoke" "rule"))
 
 (defun check-program (forms)
@@ -571,7 +586,8 @@
     (dolist (form forms)
       (when (consp form)
         (let ((head (head-of form)))
-          (cond ((string= head "lattice") (chk-lattice form))
+          (cond ((string= head "horizon") (chk-horizon form))
+                ((string= head "lattice") (chk-lattice form))
                 ((string= head "import")  (chk-import form))
                 ((string= head "retract") (chk-retract form))
                 ((string= head "revoke")  (chk-revoke form))

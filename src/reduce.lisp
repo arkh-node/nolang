@@ -30,10 +30,18 @@
 ;; ORIGIN — ближайший известный источник свидетеля. ROOTS/COLLAPSED — что вошло в свёртку
 ;; и что было поглощено как копия того же корня (см. red-claim).
 (defstruct (jv (:constructor jv (grade w+ w- &optional base cover leaned origin roots collapsed
-                                 dropped short-roots)))
+                                 dropped short-roots (k *k*))))
   grade w+ w- base cover leaned origin roots collapsed
+  ;; 🔴 ГОРИЗОНТ СОХРАНЯЕТСЯ В МОМЕНТ СОЗДАНИЯ, а не читается при вычислении веры.
+  ;; Найдено при вводе `horizon` (29.07) — и это ВТОРОЙ раз за сутки, когда я нарушаю
+  ;; собственный закон: «отложенное вычисление в контексте, которого больше нет, — это не
+  ;; поздний ответ, а чужой». `jv-belief` зовётся ПОСЛЕ прогона, когда `with-prelude` уже
+  ;; вернул прелюдный `k`, и вера считалась бы не тем горизонтом, который объявила программа.
+  ;; Первый раз то же было со степенью в вердикте. Закон, записанный и нарушенный дважды,
+  ;; надо не перечитывать, а встраивать в носитель — вот он, слот.
   dropped        ; отсеянные квантором: (имя степень частота) — ОБЯЗАНЫ быть видны
-  short-roots)   ; требование к множеству не выполнено: (нужно есть)
+  short-roots    ; требование к множеству не выполнено: (нужно есть)
+  k)             ; горизонт, действовавший при создании
 (defstruct (sv (:constructor sv (where why))) where why)
 (defstruct (fv (:constructor fv (action on b thr lack))) action on b thr lack)
 (defstruct (av (:constructor av (rev thr else comp &optional need perm))) rev thr else comp
@@ -42,7 +50,10 @@
          ; (`formal/Act.agda`). Хранится ради вердикта — чтобы точка решения могла назвать,
          ; чего действие требовало, даже когда программа уже отвергнута проверяющим.
 
-(defun jv-fc (j) (evidence->fc (jv-w+ j) (jv-w- j)))
+(defun jv-fc (j)
+  "🔴 Вера считается ТЕМ горизонтом, что действовал при создании значения, а не тем,
+   что случился при печати. См. слот `k` выше."
+  (evidence->fc (jv-w+ j) (jv-w- j) (or (jv-k j) *k*)))
 (defun jv-belief (j) (multiple-value-bind (f c) (jv-fc j) (* f c)))
 
 ;;; ── конфигурация ────────────────────────────────────────────────────────────
@@ -71,7 +82,11 @@
          (f (kw form :f 0.9)) (c (kw form :c 0.8))
          ;; нет источника → сам себе корень (одиночка, ни с кем не группируется)
          (origin (or (first (kw form :source)) id)))
-    (multiple-value-bind (w+ w-) (fc->evidence f c)
+    ;; 🔴 СЧЁТ, ЕСЛИ ОН ЕСТЬ, БЕРЁТСЯ КАК ЕСТЬ. Поверхностный синтаксис отдаёт `w⁺`/`w⁻`
+    ;; напрямую (см. `p-witness`): счёт есть носитель, `(f,c)` — карта над ним, и цена карты
+    ;; зависит от `k`. Форма с `:f`/`:c` (внутренние тесты) переводится, как прежде.
+    (multiple-value-bind (w+ w-)
+        (if (kw form :w+) (values (kw form :w+) (kw form :w- 0.0)) (fc->evidence f c))
       (store-put store id (jv (or g (g-bot)) w+ w- nil nil nil origin)))))
 
 (defun red-ask (form store)
@@ -94,17 +109,20 @@
   ;; То же и с импортом: модуль обязан быть зарегистрирован до чтения своих свидетелей.
   (let ((out '()))
     (dolist (f forms (nreverse out))
+      (when (and (consp f) (string= (head-of f) "horizon")) (chk-horizon f))
       (when (and (consp f) (string= (head-of f) "lattice")) (chk-lattice f))
       (when (and (consp f) (string= (head-of f) "import"))  (register-import f))
       (when (and (consp f) (string= (head-of f) "witness"))
         (let* ((mod (kw f :module))
                (raw (parse-grade (kw f :grade)))
                (g   (if mod (grade-through-module mod raw) raw)))
-          (push (list (second f)
-                      (or g (g-bot))
-                      (or (first (kw f :source)) (second f))
-                      (kw f :f 0.9) (kw f :c 0.8) mod)
-                out))))))
+          (multiple-value-bind (ff cc)
+              (if (kw f :w+) (evidence->fc (kw f :w+) (kw f :w- 0.0))
+                  (values (kw f :f 0.9) (kw f :c 0.8)))
+            (push (list (second f) (or g (g-bot))
+                        (or (first (kw f :source)) (second f))
+                        ff cc mod)
+                  out)))))))
 
 ;;; 🔴 СВИДЕТЕЛИ — ОБЪЯВЛЕНИЯ, А НЕ СОБЫТИЯ: они есть с самого начала, а не появляются по ходу.
 ;;; Склад наполняется ими ДО обхода. Иначе выходило так (поймано тестом конфлюэнтности 28.07):
@@ -312,7 +330,8 @@
          (store (prefill-store *corpus* dead)) (d dead))
     (dolist (form forms store)
       (let ((h (head-of form)))
-        (cond ((string= h "lattice") (chk-lattice form))
+        (cond ((string= h "horizon") (chk-horizon form))
+              ((string= h "lattice") (chk-lattice form))
               ((string= h "import")  (register-import form))
               ;; 🔴 Отзыв КОРНЯ убивает всех потомков сам собой: свидетель с мёртвым корнем
               ;; выпадает из основания без отдельного правила. Побочная выгода носителя.
@@ -326,7 +345,7 @@
 ;; 🔴 ПОЛНОТА ДИСПЕТЧЕРОВ проверяется при загрузке (см. common.lisp). `replay` сознательно
 ;; не совершает действий — пересчёт отвечает на вопрос «каким был бы склад», а не переигрывает
 ;; историю; поэтому "do" у него в пропущенных, и это объявлено, а не забыто.
-(assert-covers "replay" '("lattice" "import" "retract" "revoke" "witness" "ask" "claim" "action")
+(assert-covers "replay" '("lattice" "horizon" "import" "retract" "revoke" "witness" "ask" "claim" "action")
                :skip '("do" "rule"))
 
 ;;; ── МОСТ НАРУЖУ ─────────────────────────────────────────────────────────────
@@ -384,6 +403,7 @@
     (macrolet ((к (st &optional (pd 'pend) (lg 'ledger) (dd 'dead))
                  `(cfg ,st ,pd ,lg ,dd done rest)))
       (cond
+        ((string= h "horizon") (chk-horizon form) (к store))
         ((string= h "lattice") (chk-lattice form) (к store))
         ;; импорт склада не меняет: он объявляет ШКАЛУ, а не свидетельство.
         ((string= h "import")  (register-import form) (к store))
@@ -436,7 +456,7 @@
         (t (к store))))))
 
 ;;; ── прогон ──────────────────────────────────────────────────────────────────
-(assert-covers "step-cfg" '("lattice" "import" "witness" "ask" "claim" "action" "do"
+(assert-covers "step-cfg" '("lattice" "horizon" "import" "witness" "ask" "claim" "action" "do"
                             "retract" "revoke")
                :skip '("rule"))
 
