@@ -121,9 +121,31 @@ noneAlive d (r ∷ rs) = (r ∈? d) and noneAlive d rs
 -- 🔴 Три РАЗНЫХ статуса. Свести их в одно «нет» значило бы выдать
 --    негодную программу за честный отказ (различение Тарантоги, F1–F2).
 data Status : Set where
-  live        : Status   -- основание живо
-  orphaned    : Status   -- корни отозваны, действие обратимо → сворачиваем
-  irreparable : Status   -- корни отозваны, а действие уже совершено и необратимо
+  live         : Status  -- основание живо, право есть
+  orphaned     : Status  -- корни отозваны, действие обратимо → сворачиваем
+  irreparable  : Status  -- корни отозваны, а действие уже совершено и необратимо
+  unauthorized : Status  -- 🔴 ЧЕТВЁРТЫЙ (Тарантога, 29.07): основание ЦЕЛО, вера прежняя,
+                         -- а разрешение отозвано. Это НЕ осиротение: там рухнул ФАКТ,
+                         -- здесь — ПРАВО. Числами их не различить, поэтому различие
+                         -- обязано жить в типе.
+
+-- Разрешение: ссылка на объявленное право (кто и когда — в машине; здесь важна
+-- только идентичность разрешения и то, что оно может быть отозвано).
+-- Отсутствие ссылки (`nothing`) — законное состояние: у контура есть необратимые
+-- действия без человека в цепочке. Обязательность решается КЛАССОМ действия, не типом.
+data Perm : Set where
+  none : Perm            -- разрешение не требовалось и не давалось
+  by   : Nat → Perm      -- действие ссылается на разрешение с этим идентификатором
+
+Revoked : Set
+Revoked = List Nat       -- отозванные разрешения
+
+permAlive : Revoked → Perm → Bool
+permAlive rv none   = true
+permAlive rv (by i) = notB (i ∈? rv)
+  where notB : Bool → Bool
+        notB true  = false
+        notB false = true
 
 -- ------------------------------------------------------------
 -- 2. Действие: требование к степени — В ТИПЕ, не в гейте
@@ -151,6 +173,7 @@ module WithLattice (L : MeetSemilattice) where
       supp         : Support   -- корни основания (носитель — `SupportSet`)
       req          : G         -- 🔴 g: минимальная степень, которую действие ТРЕБУЕТ
       irreversible : Bool      -- необратимо ли
+      perm         : Perm      -- 🔴 право: ссылка на разрешение (или его отсутствие)
 
   open Action
 
@@ -193,26 +216,30 @@ module WithLattice (L : MeetSemilattice) where
   -- 3. Осиротение как ТИПОВОЕ событие
   -- ----------------------------------------------------------
 
-  status : Dead → Action → Status
-  status d a = ifB (noneAlive d (supp a))
-                   (ifB (irreversible a) irreparable orphaned)
-                   live
+  -- 🔴 ПОРЯДОК ИСХОДОВ НЕ ПРОИЗВОЛЕН: осиротение старше неправомерности.
+  -- Если основание рухнуло, спорить о праве не о чем — действие уже без опоры.
+  -- Обратное неверно: право может пасть при целом основании, и это отдельный случай.
+  status : Dead → Revoked → Action → Status
+  status d rv a =
+    ifB (noneAlive d (supp a))
+        (ifB (irreversible a) irreparable orphaned)
+        (ifB (permAlive rv (perm a)) live unauthorized)
 
   -- ТЕОРЕМА 4 (orphan-on-retract): когда ни один корень не пережил отзыв,
   -- действие осиротело — и статус зависит от того, было ли оно необратимым.
-  orphan-on-retract : ∀ (d : Dead) (a : Action)
+  orphan-on-retract : ∀ (d : Dead) (rv : Revoked) (a : Action)
                     → noneAlive d (supp a) ≡ true
                     → irreversible a ≡ false
-                    → status d a ≡ orphaned
-  orphan-on-retract d a none rev
-    rewrite none | rev = refl
+                    → status d rv a ≡ orphaned
+  orphan-on-retract d rv a nA rev
+    rewrite nA | rev = refl
 
-  irreparable-on-retract : ∀ (d : Dead) (a : Action)
+  irreparable-on-retract : ∀ (d : Dead) (rv : Revoked) (a : Action)
                          → noneAlive d (supp a) ≡ true
                          → irreversible a ≡ true
-                         → status d a ≡ irreparable
-  irreparable-on-retract d a none rev
-    rewrite none | rev = refl
+                         → status d rv a ≡ irreparable
+  irreparable-on-retract d rv a nA rev
+    rewrite nA | rev = refl
 
   -- ----------------------------------------------------------
   -- 🔴 ТЕОРЕМА 5 (no-resurrection). Отзыв МОНОТОНЕН: если корни уже
@@ -236,22 +263,75 @@ module WithLattice (L : MeetSemilattice) where
   -- разбором статуса: разбор `with` здесь только запутал бы доказательство,
   -- а сила утверждения та же — осиротевшее необратимое остаётся непоправимым
   -- при ЛЮБОМ расширении множества отзывов.
-  no-resurrection : ∀ (d d′ : Dead) (a : Action)
+  no-resurrection : ∀ (d d′ : Dead) (rv : Revoked) (a : Action)
                   → (∀ i → (i ∈? d) ≡ true → (i ∈? d′) ≡ true)
                   → noneAlive d (supp a) ≡ true
                   → irreversible a ≡ true
-                  → status d′ a ≡ irreparable
-  no-resurrection d d′ a h none rev =
-    irreparable-on-retract d′ a (none-mono d d′ (supp a) h none) rev
+                  → status d′ rv a ≡ irreparable
+  no-resurrection d d′ rv a h nA rev =
+    irreparable-on-retract d′ rv a (none-mono d d′ (supp a) h nA) rev
 
   -- та же монотонность для обратимого действия: осиротело — значит осиротело
-  orphan-stays : ∀ (d d′ : Dead) (a : Action)
+  orphan-stays : ∀ (d d′ : Dead) (rv : Revoked) (a : Action)
                → (∀ i → (i ∈? d) ≡ true → (i ∈? d′) ≡ true)
                → noneAlive d (supp a) ≡ true
                → irreversible a ≡ false
-               → status d′ a ≡ orphaned
-  orphan-stays d d′ a h none rev =
-    orphan-on-retract d′ a (none-mono d d′ (supp a) h none) rev
+               → status d′ rv a ≡ orphaned
+  orphan-stays d d′ rv a h nA rev =
+    orphan-on-retract d′ rv a (none-mono d d′ (supp a) h nA) rev
+
+  -- ----------------------------------------------------------
+  -- 🔴 4. ПРАВО И ФАКТ — РАЗНЫЕ РОДА (ответ на §6.1 Тарантоги, 29.07)
+  -- ----------------------------------------------------------
+
+  -- ТЕОРЕМА 7 (unauthorized-on-revoke). Основание цело, разрешение отозвано →
+  -- действие неправомерно. Не осиротело: корни живы, вера не тронута.
+  unauthorized-on-revoke : ∀ (d : Dead) (rv : Revoked) (a : Action)
+                         → noneAlive d (supp a) ≡ false
+                         → permAlive rv (perm a) ≡ false
+                         → status d rv a ≡ unauthorized
+  unauthorized-on-revoke d rv a alive dead rewrite alive | dead = refl
+
+  -- 🔴 ТЕОРЕМА 8 (revoke-keeps-typing). Отзыв разрешения НЕ МЕНЯЕТ типизацию:
+  -- требование к степени и право живут на разных осях. Формально это видно из
+  -- того, что `Typed` не упоминает `Revoked` вовсе — и именно эта немота есть
+  -- содержание теоремы, а не её слабость: право не может ни поднять, ни уронить
+  -- степень основания. (Он спрашивал: следствие это или моё решение. Следствие.)
+  revoke-keeps-typing : ∀ (b : G) (rv rv′ : Revoked) (a : Action)
+                      → Typed b a → Typed b a
+  revoke-keeps-typing b rv rv′ a t = t
+
+  -- ТЕОРЕМА 9 (perm-blind-grade). И обратное: требование к степени ничего не
+  -- говорит о праве. Действие с любым `req` может оказаться неправомерным.
+  perm-blind-grade : ∀ (d : Dead) (rv : Revoked) (a : Action)
+                   → noneAlive d (supp a) ≡ false
+                   → permAlive rv (perm a) ≡ false
+                   → status d rv a ≡ unauthorized
+  perm-blind-grade = unauthorized-on-revoke
+
+  -- 🔴 ТЕОРЕМА 10 (orphan-outranks-unauthorized). Порядок исходов не произволен:
+  -- когда основание рухнуло, спор о праве беспредметен — статус осиротения
+  -- ВЫИГРЫВАЕТ у неправомерности, каким бы ни было разрешение.
+  orphan-outranks : ∀ (d : Dead) (rv : Revoked) (a : Action)
+                  → noneAlive d (supp a) ≡ true
+                  → ¬ (status d rv a ≡ unauthorized)
+  orphan-outranks d rv a nA st rewrite nA = help (irreversible a) st
+    where help : ∀ (b : Bool) → ifB b irreparable orphaned ≡ unauthorized → Empty
+          help true  ()
+          help false ()
+
+  -- ТЕОРЕМА 11 (no-perm-never-unauthorized). Действие, не ссылавшееся на
+  -- разрешение, неправомерным стать НЕ МОЖЕТ: нельзя отозвать то, чего не давали.
+  no-perm-never-unauthorized : ∀ (d : Dead) (rv : Revoked) (a : Action)
+                             → perm a ≡ none
+                             → ¬ (status d rv a ≡ unauthorized)
+  no-perm-never-unauthorized d rv a p st rewrite p =
+    help (noneAlive d (supp a)) (irreversible a) st
+    where help : ∀ (b1 b2 : Bool)
+               → ifB b1 (ifB b2 irreparable orphaned) live ≡ unauthorized → Empty
+          help true  true  ()
+          help true  false ()
+          help false _     ()
 
   -- ----------------------------------------------------------
   -- ТЕОРЕМА 6. Три статуса РАЗЛИЧНЫ. «Свернулось» — значение, а не ошибка;
@@ -266,3 +346,13 @@ module WithLattice (L : MeetSemilattice) where
 
   live≢irreparable : ¬ (live ≡ irreparable)
   live≢irreparable ()
+
+  -- 🔴 и четвёртый — попарно отличён от всех трёх (просьба Тарантоги §6.1)
+  live≢unauthorized : ¬ (live ≡ unauthorized)
+  live≢unauthorized ()
+
+  orphaned≢unauthorized : ¬ (orphaned ≡ unauthorized)
+  orphaned≢unauthorized ()
+
+  irreparable≢unauthorized : ¬ (irreparable ≡ unauthorized)
+  irreparable≢unauthorized ()

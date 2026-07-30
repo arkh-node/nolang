@@ -309,12 +309,27 @@
   ;; reversible action ИМЯ [gate]
   ;; compensable action ИМЯ compensated by ИМЯ [gate]
   ;; irreversible action ИМЯ gate            ← гейт ОБЯЗАТЕЛЕН продукцией
-  (let ((rev (cond ((word? "reversible") "reversible")
+  (let ((direction nil)
+        (rev (cond ((word? "reversible") "reversible")
                    ((word? "compensable") "compensable")
                    ((word? "irreversible") "irreversible")
                    (t (serr "действие обязано объявить класс обратимости: ~
                              reversible / compensable / irreversible")))))
     (advance)
+    ;; ── КЛАСС НАПРАВЛЕНИЯ: наружу или внутрь (разбор Невис, 29.07 вечер) ──────
+    ;; 🔴 ОДИННАДЦАТОЕ НЕЗАПИСЫВАЕМОЕ СОСТОЯНИЕ: действие НАРУЖУ без разрешения.
+    ;; Я спрашивал, обязательно ли разрешение для необратимого, и склонялся к «нет, но
+    ;; печатать отсутствие». Её поправка сняла спор различением, которого мне не хватало:
+    ;; оба довода верны, но о РАЗНЫХ действиях. «Необратимое всегда чьё-то право» — верно
+    ;; для влияющего наружу (пуш, письмо, деньги, чужой сервер). «Требовать цитаты для
+    ;; ротации логов — превратить право в формальность» — верно для замкнутого внутри.
+    ;; Значит обязательность есть свойство КЛАССА, а не всего необратимого; и там, где она
+    ;; есть, её надо делать невыразимой, а не проверять: у `outward` без разрешения
+    ;; программы просто нет. Формальность научаются выписывать — поэтому подпись требуется
+    ;; там, где её цена реальна, и не требуется там, где она стала бы ритуалом.
+    (let ((dir (cond ((word? "outward") (advance) "outward")
+                     ((word? "internal") (advance) "internal"))))
+      (setf direction dir))
     (eat-word "action")
     (let ((id (eat-ident "имя действия")) comp gate req perm-quote perm-who perm-when)
       (when (string= rev "compensable")
@@ -359,6 +374,12 @@
         (setf perm-who (eat-ident "кто разрешил"))
         (eat-word "at" "разрешение датировано: вчерашнее «да» не разрешает сегодняшнее")
         (setf perm-when (eat-str "дата разрешения")))
+      ;; 🔴 НАРУЖУ БЕЗ РАЗРЕШЕНИЯ — НЕ ЗАПИСЫВАЕТСЯ ВОВСЕ
+      (when (and (equal direction "outward") (null perm-who))
+        (serr "действие ~a помечено `outward` — оно влияет НАРУЖУ, и разрешения у него нет.~%  ~
+               Наружу необратимое всегда чьё-то право, и «никто не разрешал» здесь не~%  ~
+               нейтральный случай, а худший. Допишите:~%    ~
+               needs permission \"<дословная цитата>\" from <кто> at \"<дата>\"" id))
       (when (and (null req) (string= rev "irreversible"))
         (serr "необратимое действие ~a не сказало, какой степени основание ему нужно.~%  ~
                Гейт по вере этого не заменяет: свидетельств можно принести сколько угодно,~%  ~
@@ -371,6 +392,7 @@
                     gated by belief >= 0.9~%    else fold" id)))
       `(action ,id :reversibility ,(intern (string-upcase rev))
                ,@(when req `(:needs-grade ,req))
+               ,@(when direction `(:direction ,(intern (string-upcase direction))))
                ,@(when perm-who `(:permission (,perm-quote ,perm-who ,perm-when)))
                ,@(when gate `(:requires (>= belief ,(first gate)) :else ,(second gate)))
                ,@(when (and gate (third gate)) `(:theta-from ,(third gate)))
