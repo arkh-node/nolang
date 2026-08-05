@@ -1,11 +1,19 @@
-node_modules/
-__pycache__/
-*.fasl
-*.log
-.DS_Store
-_internal/
-oracle/build/
+# бэкапы — история правок живёт в git, а не рядом с кодом
+*.bak*
+
+# артефакты сборки
 *.agdai
-*.bak
-*.bak_*
-УРОЖАЙ_из_статьи_Свидетель.md
+*.fasl
+__pycache__/
+node_modules/
+dist/
+
+# локальное
+.DS_Store
+*.swp
+
+# артефакты сборки оракула (21 МБ бинарников Agda/MAlonzo)
+oracle/build/
+
+# внутренние заметки контура — не для публичного репозитория
+_internal/
