@@ -1,6 +1,4 @@
-lattice design       = observational < randomised
-lattice transmission = unavailable < abstract < published < full_report
-lattice grade        = design * transmission   ; grades need not be linearly ordered
+; evidence-gate.nol — ПРОГРАММА: что намеряли. Мера — в evidence-gate.nolp
 
 witness kaiser2003 : (randomised, published)
   says "meta-analysis of ten manufacturer trials: fewer complications"
@@ -30,24 +28,6 @@ claim benefit
   from all where grade >= (randomised, abstract)
   requiring 2 roots                      ; quantify over the WHOLE corpus, not by name
   searched registries
-
-reversible action write_off
-  gated by belief >= 0.1
-  else fold                              ; у возмещения СВОЙ гейт, а не порог того, что рухнуло
-
-compensable action stockpile compensated by write_off
-  gated by belief >= 0.96
-  else fold
-
-irreversible action publish_guidance
-  needs grade >= (randomised, abstract)  ; требование к ПРОИСХОЖДЕНИЮ, проверяется типом
-  gated by belief >= 0.96
-  else fold
-
-irreversible action recommend
-  needs grade >= (randomised, abstract)
-  gated by belief >= derived gain 1 loss 12 learn 0.6 discount 0.9
-  else fold
 
 perform stockpile on benefit
 perform publish_guidance on benefit

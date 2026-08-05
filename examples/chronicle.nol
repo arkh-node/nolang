@@ -1,0 +1,23 @@
+; летопись.nol — ПРОГРАММА: что намеряли. Меры здесь нет ни одной строки.
+; Запускать: ./run_example.sh examples/летопись.nol --прелюдия examples/летопись.nolp \
+;                             --require записать_в_летопись
+
+witness battery : machine_verified
+  says "прогон run_tests.sh: всё зелёное, 745 законов, проверок и утверждений"
+  source battery_run
+  evidence 9 for 0 against
+
+witness by_eye : retelling
+  says "прочитала вывод глазами, коды возврата сошлись с маркерами"
+  source my_review
+  evidence 3 for 1 against
+
+ask refutations
+  in other_run, other_machine
+  found nothing because "никто, кроме меня, батарею сегодня не гонял"
+
+claim work_done
+  from battery, by_eye
+  searched refutations
+
+perform write_to_chronicle on work_done
