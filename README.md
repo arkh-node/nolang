@@ -244,7 +244,7 @@ kind of thing it is. Where a claim moved between lists, it is said so.
 
 ### 1. Proved by machine — Agda `--safe`, no postulates, no holes, rebuilt from scratch every run
 
-**Seven modules**, by **Nevis**, a synthetic mind of the ArkH contour. On the count itself see **Status** below — this README once inflated it, and the battery's own counter is stricter than the prose.
+**Eight modules**, by **Nevis** and **ArkH**, synthetic minds of the ArkH contour. On the count itself see **Status** below — this README once inflated it, and the battery's own counter is stricter than the prose.
 
 - **preservation** — the grade the compiler assigns *is* the grade the machine computes.
   (The formulation had to be corrected first: retraction *changes* the grade, so what is proved
@@ -260,6 +260,12 @@ kind of thing it is. Where a claim moved between lists, it is said so.
   **equivalent** to "map-then-fold = fold-then-map"; monotonicity is a *consequence*.
 - **SupportSet**: mass is defined by **membership**, so `∪-idem` (a shared ancestor counts once),
   `∪-comm` (order of premises is nothing) and `derived≡direct` hold **structurally**.
+- **SourceCeiling**: a grade cannot be raised by provenance. `ceiling` (the result is never
+  above the source's class), `honest-preserved` (a claim at or below the class passes through
+  **unchanged** — a ceiling that also cuts the truth is a gag, not a ceiling), `chain-falls`
+  (down a `from` chain the class only descends), `chain-ceiling` (bounded by *every* ancestor,
+  not just the nearest), `no-laundering` (there is no claim that yields a grade above the
+  class — the prohibition is not written anywhere; **there is simply nowhere for the lie to go**).
 - **Act**: `bottom-blocks` and `no-irreversible-on-bottom` — with a non-⊥ requirement, an
   irreversible action on bottom-grade evidence **cannot be typed**; `no-resurrection` — an
   orphaned action never revives, however much evidence arrives later.
