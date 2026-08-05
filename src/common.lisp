@@ -268,8 +268,32 @@
 ;;; покрывает и что сознательно пропускает. Добавил форму, забыл диспетчер — падение при
 ;;; загрузке, а не тихая дыра в семантике.
 (defparameter *form-vocabulary*
-  '("lattice" "witness" "ask" "claim" "action" "do" "retract" "rule" "import" "revoke" "horizon")
+  '("lattice" "witness" "ask" "claim" "action" "do" "retract" "rule" "import" "revoke" "horizon"
+    "permit")
   "Все формы языка. Расширяется ТОЛЬКО здесь; дальше компилятор потребует покрытия.")
+
+;;; ── ЗАРЕЗЕРВИРОВАННЫЕ СЛОВА ────────────────────────────────────────────────
+;;; 🔴 Ключевое слово в позиции имени — не безобидная вольность. `witness claim : …`
+;;; разбирается, но читается человеком как объявление другого рода; `claim action …`
+;;; заставляет читателя гадать, что здесь форма, а что имя. Язык, чья цель — сделать
+;;; происхождение ВИДИМЫМ, не может позволять записи, которые видны неверно.
+;;; 🔴 Список закрыт и лежит рядом со словарём форм: добавил ключевое слово в грамматику —
+;;; впиши сюда, иначе оно останется законным именем, и кто-нибудь им назовётся.
+(defparameter *reserved-words*
+  '(;; формы
+    "lattice" "horizon" "import" "witness" "ask" "claim" "action" "rule" "perform" "do"
+    "permit" "revoke" "retract"
+    ;; части объявлений
+    "needs" "grade" "permission" "gated" "belief" "else" "to" "from" "at" "on" "by"
+    "says" "source" "evidence" "for" "against" "in" "found" "nothing" "because"
+    "searched" "requiring" "roots" "root" "all" "where" "not" "via" "of" "concludes"
+    "compensated" "derived" "gain" "loss" "learn" "discount"
+    ;; классы действий и направления
+    "reversible" "irreversible" "compensable" "internal" "outward")
+  "Слова, которыми нельзя НАЗВАТЬСЯ. Расширяется вместе с грамматикой.")
+
+(defun reserved-word-p (name)
+  (member (string-downcase (string name)) *reserved-words* :test #'string=))
 
 (define-condition dispatcher-gap (error)
   ((who :initarg :who :reader gap-who) (missing :initarg :missing :reader gap-missing))

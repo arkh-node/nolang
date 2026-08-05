@@ -278,7 +278,24 @@
                  (let ((r (kw form :requires))) (and (consp r) (third r)))
                  (kw form :else) (kw form :compensated-by)
                  (let ((g (kw form :needs-grade))) (and g (parse-grade g)))
-                 (kw form :permission))))
+                 ;; 🔴 Право НЕ приходит из объявления: там стоит лишь требование «кто вправе».
+                 ;; Склад получает его позже, формой `permit` — то есть в момент замера,
+                 ;; а не в момент, когда писалась линейка.
+                 nil)))
+
+;;; ── R-PERMIT: предъявленное право ложится на действие ───────────────────────
+;;; 🔴 Право не трогает ни веру, ни степень: это ТРЕТЬЯ ОСЬ. Меняется единственное —
+;;; появляется то, что `revoke` сможет отозвать, а вердикт — предъявить читателю.
+;;; Формат тот же, что раньше приходил из объявления действия: (цитата кто адрес), —
+;;; поэтому `revoke` и четвёртый статус `unauthorized` работают без единой правки.
+(defun red-permit (form store)
+  (let* ((a (second form))
+         (av* (gethash a store)))
+    (if (av-p av*)
+        (store-put store a
+                   (av (av-rev av*) (av-thr av*) (av-else av*) (av-comp av*) (av-need av*)
+                       (list (kw form :quote) (kw form :who) (kw form :at))))
+        store)))
 
 (defun red-do (form store ledger &optional done)
   ;; R-DO-PASS / R-DO-FOLD — единственное место, где программа обращается наружу.
@@ -337,6 +354,10 @@
               ;; выпадает из основания без отдельного правила. Побочная выгода носителя.
               ((string= h "retract") (unless ignore-retracts (pushnew (second form) d)))
               ((string= h "revoke") nil)   ; право основания не трогает — см. step-cfg
+              ;; 🔴 permit при перепрогоне ВОССТАНАВЛИВАЕТСЯ: перепрогон пересчитывает веру
+              ;; после отзыва свидетеля, и потерять здесь предъявленное право значило бы
+              ;; превратить осиротение в неправомерность — разные статусы, разные последствия.
+              ((string= h "permit") (setf store (red-permit form store)))
               ((string= h "witness") (setf store (red-witness form store)))
               ((string= h "ask")     (setf store (red-ask form store)))
               ((string= h "claim")   (setf store (red-claim form store d)))
@@ -345,7 +366,8 @@
 ;; 🔴 ПОЛНОТА ДИСПЕТЧЕРОВ проверяется при загрузке (см. common.lisp). `replay` сознательно
 ;; не совершает действий — пересчёт отвечает на вопрос «каким был бы склад», а не переигрывает
 ;; историю; поэтому "do" у него в пропущенных, и это объявлено, а не забыто.
-(assert-covers "replay" '("lattice" "horizon" "import" "retract" "revoke" "witness" "ask" "claim" "action")
+(assert-covers "replay" '("lattice" "horizon" "import" "retract" "revoke" "permit" "witness" "ask"
+                          "claim" "action")
                :skip '("do" "rule"))
 
 ;;; ── МОСТ НАРУЖУ ─────────────────────────────────────────────────────────────
@@ -415,6 +437,7 @@
            (к (red-claim form store dead)
               (remove-if (lambda (s) (member s used)) pend))))
         ((string= h "action") (к (red-action form store)))
+        ((string= h "permit") (к (red-permit form store)))
         ((string= h "do")
          (multiple-value-bind (st lg) (red-do form store ledger (cfg-done c))
            (к st pend lg)))
@@ -457,7 +480,7 @@
 
 ;;; ── прогон ──────────────────────────────────────────────────────────────────
 (assert-covers "step-cfg" '("lattice" "horizon" "import" "witness" "ask" "claim" "action" "do"
-                            "retract" "revoke")
+                            "retract" "revoke" "permit")
                :skip '("rule"))
 
 ;;; ── НОСИТЕЛЬ ────────────────────────────────────────────────────────────────
