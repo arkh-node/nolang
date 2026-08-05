@@ -3,6 +3,8 @@ lattice transmission = unavailable < abstract < published < full_report
 lattice provenance   = design * transmission
 
 source ten_trials : (randomised, full_report)
+  fingerprint "doi:10.1136/bmj.g2545"
+  says "ten manufacturer trials"
 source abstracts  : (randomised, abstract)
   from ten_trials
 

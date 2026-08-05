@@ -23,5 +23,15 @@ else
   echo "  ✗ честная степень отвергнута — потолок режет лишнее"; echo "$out" | head -3; fail=1
 fi
 
+# B5: отпечаток и происхождение доживают до вывода наружу
+out=$(sbcl --script test/sources/_provn.lisp 2>&1)
+for m in 'nolang:class="randomised·full_report"' 'nolang:fingerprint="doi:' 'wasDerivedFrom(nolang:abstracts, nolang:ten_trials)'; do
+  if grep -qF "$m" <<<"$out"; then
+    echo "  ✓ в PROV-N дошло: ${m:0:44}"; ok=$((ok+1))
+  else
+    echo "  ✗ в PROV-N НЕ дошло: $m"; fail=1
+  fi
+done
+
 echo "ИТОГ: $ok"
 exit $fail

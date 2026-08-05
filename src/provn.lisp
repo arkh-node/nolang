@@ -67,10 +67,17 @@
 ;; склад от носителя НЕ зависит, а журнал его ЗАПИСЫВАЕТ. Значит и экспорт обязан брать носитель
 ;; из журнала, а не из своего вызова: иначе появился бы второй источник правды о том, где это
 ;; происходило, и однажды они разошлись бы.
-(defun export-provn (store ledger &key (prefix "nolang"))
+(defun export-provn (store ledger &key (prefix "nolang") (sources *sources*))
   "Склад и журнал → документ PROV-N (строка).
    🔴 Экспорт НИЧЕГО не пересчитывает: он только перекладывает уже посчитанное.
-   Стоит ему начать считать — и наружу пойдёт вторая семантика, расходящаяся с первой."
+   Стоит ему начать считать — и наружу пойдёт вторая семантика, расходящаяся с первой.
+
+   🔴 ИСТОЧНИКИ (05.08.2026, B5). Объявленный источник несёт класс, происхождение и отпечаток.
+   Наружу они идут атрибутами сущности, а происхождение — их же конструкцией `wasDerivedFrom`:
+   наш `from` и их `wasDerivedFrom` — одно и то же отношение, и это единственное место, где
+   чужая нотация ложится на нашу без натяжки.
+   Отпечаток вывозится как есть и НИЧЕГО здесь не проверяет: проверка — этап D (re-entry).
+   Сейчас его работа одна — дожить до журнала неизменным, чтобы было с чем сверять потом."
   (with-output-to-string (out)
     (format out "document~%")
     (format out "  prefix ~a <~a>~%" prefix *provn-iri*)
@@ -82,9 +89,25 @@
                  (declare (ignore k))
                  (when (and (jv-p v) (jv-origin v)) (pushnew (jv-origin v) roots)))
                store)
+      ;; объявленные источники выводим целиком, даже если на них никто не сослался:
+      ;; мера существует независимо от того, воспользовались ею или нет
+      (dolist (pair sources) (pushnew (car pair) roots))
       (dolist (r (sort roots #'string< :key #'string))
-        (format out "  entity(~a~a)~%" (pn-id prefix r)
-                (pn-attrs `(("nolang:kind" . "source"))))))
+        (let* ((rec (cdr (assoc r sources)))
+               (cls (and rec (getf rec :grade)))
+               (fp  (and rec (getf rec :fingerprint)))
+               (says (and rec (getf rec :says))))
+          (format out "  entity(~a~a)~%" (pn-id prefix r)
+                  (pn-attrs (append `(("nolang:kind" . "source"))
+                                    (when cls  `(("nolang:class" . ,(g-ru cls))))
+                                    (when fp   `(("nolang:fingerprint" . ,fp)))
+                                    (when says `(("prov:label" . ,says))))))))
+      ;; происхождение источника от источника — их же отношение, без натяжки
+      (dolist (pair sources)
+        (let ((from (getf (cdr pair) :from)))
+          (when from
+            (format out "  wasDerivedFrom(~a, ~a)~%"
+                    (pn-id prefix (car pair)) (pn-id prefix from))))))
 
     ;; ── значения склада ──
     (let ((keys '()))
