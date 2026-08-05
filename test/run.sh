@@ -10,6 +10,12 @@ export NAR
 check() {  # $1 test file, $2.. expected markers
   local f="$1"; shift
   local out; out=$(sbcl --script "test/$f" 2>&1)
+  # Пропуск из-за отсутствующей внешней зависимости — НЕ провал. Тот же приём, что у 07_nars
+  # с бинарником ONA: отсутствие зависимости и поломка кода обязаны быть различимы.
+  if grep -q "^SKIP " <<<"$out"; then
+    echo "  · $f $(grep -m1 "^SKIP " <<<"$out" | sed "s/^SKIP [^:]*: //")"
+    return 0
+  fi
   local ok=1
   for m in "$@"; do grep -qF "$m" <<<"$out" || { ok=0; echo "  ✗ $f: missing marker «$m»"; }; done
   if [ $ok = 1 ]; then echo "  ✓ $f"; else fail=1; fi

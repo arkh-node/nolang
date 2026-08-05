@@ -325,6 +325,47 @@ git clone https://github.com/arkh-node/nolang && cd nolang
 ./run_sexp.sh    examples/sexp/migration.nol    # the EARLY layer — a different carrier
 ```
 
+### What you need, and what is optional
+
+**Required:** SBCL. **For the formal part:** Agda with the standard library
+(`./run_tests.sh` rebuilds every module from scratch, `--safe`).
+
+**Optional, and named here because it used to be invisible:**
+
+| dependency | what it unlocks | without it |
+|---|---|---|
+| [`arkh-node/ilan`](https://github.com/arkh-node/ilan) — clone **next to** nolang, or set `ILAN_PATH` | the gate↔ilan bridge: fold / sprout / sow, and the world snapshot | `02_return` and `05_world` **skip and say so**; the core, types, gate and battery run without it |
+| ONA's `NAR` binary (`NAR=/path/to/NAR`) | the NARS bridge, stone 07 | `07_nars` skips |
+
+🔴 Until 05.08.2026 `src/return.lisp` loaded `../../ilan/ilan.lisp` unconditionally. That meant
+the tests were green **only for someone who already had ilan sitting next to nolang** — on a
+fresh clone the run died with a Lisp backtrace, not with a sentence. Found by doing what this
+section now tells you to do: cloning into an empty directory and running the battery there.
+A missing dependency and a broken program must be **distinguishable**; now they are.
+
+### What a fresh clone actually prints
+
+```
+nolang smoke tests (eight stones):
+  ✓ 00_atom.lisp
+  ✓ 01_gate.lisp
+  · 02_return.lisp ilan not found, the gate<->ilan bridge is not exercised
+  ✓ 03_eval.lisp
+  ✓ 04_nol.lisp
+  · 05_world.lisp ilan not found, the world snapshot is not exercised
+  ✓ 06_types.lisp
+  · 07_nars.lisp skipped (set NAR=/path/to/ONA/NAR to run the NARS bridge — optional)
+
+ALL GREEN ✓
+```
+
+With ilan present, the two dots become checks. The full battery in a working copy:
+
+```
+VSIO ZELENOE · runs, laws and checks: 787
+formal — three numbers above, kept apart (adding them would mix kinds)
+```
+
 ### The verdict is an exit code, not prose
 
 `run_example.sh` answers the machine with a return code; the printout is for the human.

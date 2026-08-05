@@ -1,6 +1,13 @@
 ;;;; test/05_world.lisp — a real rollback of the trace in the world. sbcl --script test/05_world.lisp
 (load (merge-pathnames "../src/world.lisp" *load-pathname*))
 
+;;; Мир опирается на ilan (снимок состояния через sow/germinate) — внешняя зависимость.
+;;; Нет её — пропускаем вслух, как 02_return и 07_nars: отсутствие зависимости и поломка
+;;; кода обязаны быть различимы (найдено на чистом клоне 05.08.2026).
+(unless *ilan-loaded*
+  (format t "~&SKIP 05_world: ilan не найден, снимок мира не проверяется.~%")
+  (sb-ext:exit :code 0))
+
 (defparameter *file* "/tmp/nol-world.txt")
 
 (defun write-file (path text)
