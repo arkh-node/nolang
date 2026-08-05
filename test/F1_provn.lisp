@@ -230,10 +230,10 @@ endDocument")))
 (format t "~&── 3. НАШ ВЫВОД ПРОХОДИТ ЭТОТ РАЗБОР ──~%")
 
 (defparameter *файл*
-  (concatenate 'string (directory-namestring *load-pathname*) "../examples/фармакология.nol"))
+  (concatenate 'string (directory-namestring *load-pathname*) "../examples/pharmacology.nol"))
 (defparameter *формы*
-  (parse (with-open-file (s *файл* :external-format :utf-8)
-           (let ((d (make-string (file-length s)))) (subseq d 0 (read-sequence d s))))))
+  ;; прелюдия + программа: разделение мест — свойство запуска, семантику проверяем целиком
+  (parse (example-source *файл*)))
 
 (defparameter *вывод*
   (multiple-value-bind (st lg) (run-nolang *формы* :carrier :морф)
@@ -247,13 +247,13 @@ endDocument")))
 (format t "~&── 4. ЧТО ИМЕННО ПЕРЕЖИЛО ПЕРЕВОД ──~%")
 
 (check "корень стал сущностью-источником"
-       (search "entity(nolang:десять_испытаний_роше, [nolang:kind=\"source\"])" *вывод*))
+       (search "entity(nolang:ten_roche_trials, [nolang:kind=\"source\"])" *вывод*))
 (check "свидетель происходит от своего корня"
-       (search "wasDerivedFrom(nolang:кайзер2003, nolang:десять_испытаний_роше)" *вывод*))
+       (search "wasDerivedFrom(nolang:kaiser2003, nolang:ten_roche_trials)" *вывод*))
 (check "степень уехала атрибутом, а не потерялась"
-       (search "nolang:grade=\"испытание·публикация\"" *вывод*))
+       (search "nolang:grade=\"trial·published\"" *вывод*))
 (check "🔴 отзыв стал wasInvalidatedBy — единственное место, где PROV говорит почти нашим словом"
-       (search "wasInvalidatedBy(nolang:десять_испытаний_роше," *вывод*))
+       (search "wasInvalidatedBy(nolang:ten_roche_trials," *вывод*))
 (check "…и причина отзыва уехала дословно"
        (search "unable to determine" *вывод*))
 (check "гейт: вера в момент решения и порог записаны при использовании основания"
@@ -269,7 +269,7 @@ endDocument")))
 (check "опора на молчание помечена ролью, а не растворилась среди посылок"
        (search "nolang:role=\"leaned_on_silence\"" *вывод*))
 (check "ребро к молчанию ОДНО, а не два с разными атрибутами"
-       (let ((игла "wasDerivedFrom(nolang:смертность_снижается, nolang:нет_публикаций_о_смертности")
+       (let ((игла "wasDerivedFrom(nolang:mortality_falls, nolang:no_mortality_publications")
              (k 0) (i 0))
          (loop (let ((p (search игла *вывод* :start2 i)))
                  (if p (progn (incf k) (setf i (1+ p))) (return))))

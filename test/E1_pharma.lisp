@@ -18,11 +18,11 @@
 (defun ~= (a b &optional (eps 1e-4)) (< (abs (- a b)) eps))
 
 (defparameter *файл*
-  (concatenate 'string (directory-namestring *load-pathname*) "../examples/фармакология.nol"))
+  (concatenate 'string (directory-namestring *load-pathname*) "../examples/pharmacology.nol"))
 
 (defparameter *исходник*
-  (with-open-file (s *файл* :external-format :utf-8)
-    (let ((d (make-string (file-length s)))) (subseq d 0 (read-sequence d s)))))
+  ;; прелюдия + программа: разделение мест — свойство запуска, семантику проверяем целиком
+  (example-source *файл*))
 
 (defparameter *формы* (parse *исходник*))
 (defparameter *без-отзыва* (remove-if (lambda (f) (string= (head-of f) "retract")) *формы*))
@@ -47,54 +47,54 @@
 
 (format t "~&── ЧЕТЫРЕ УРОВНЯ СРАБАТЫВАЮТ (C4) ──~%")
 
-(defparameter *до* (gethash 'основание_закупки (run-nolang *без-отзыва*)))
+(defparameter *до* (gethash 'purchase_basis (run-nolang *без-отзыва*)))
 
 ;; 1. решётка-произведение
 (check "1/4 решётка-произведение: степень основания — КОРТЕЖ, а не одно имя"
        (consp (jv-grade *до*)))
 (check "…и это дно произведения: обе оси упали"
-       (equal (jv-grade *до*) '(:НАБЛЮДЕНИЕ :НЕДОСТУПНО)))
+       (equal (jv-grade *до*) '(:observational :unavailable)))
 
 ;; 2. корни: два канала одного испытания сложены ОДИН раз
 (check "2/4 корни: два свода одного корня свёрнуты, поглощение записано"
-       (find-if (lambda (c) (and (eq (first c) 'десять_испытаний_роше)
-                                 (eq (second c) 'кайзер2003)))
+       (find-if (lambda (c) (and (eq (first c) 'ten_roche_trials)
+                                 (eq (second c) 'kaiser2003)))
                 (jv-collapsed *до*)))
 (check "…представителем взят тяжелейший (тезисы, вес 8), а не публикация (вес 2)"
        (~= (jv-belief *до*) 0.889 0.002))
 (check "…и это СТРОГО меньше, чем если бы каналы сложились как независимые"
        (< (jv-belief *до*)
-          (jv-belief (gethash 'вымысел
+          (jv-belief (gethash 'fiction
                               (run-nolang
                                (append *без-отзыва*
-                                       '((claim вымысел (from кайзер2003 кокрейн2014)))))))))
+                                       '((claim fiction (from kaiser2003 cochrane2014)))))))))
 
 ;; 3. оба вида молчания
-(defparameter *смерть* (gethash 'смертность_снижается (run-nolang *без-отзыва*)))
+(defparameter *смерть* (gethash 'mortality_falls (run-nolang *без-отзыва*)))
 (check "3/4 ОПОРНОЕ молчание: утверждение опирается на молчание и названо словами"
        (jv-leaned *смерть*))
 (check "…и степень его при этом ДНО: подъёма из молчания в языке нет"
-       (equal (jv-grade *смерть*) '(:НАБЛЮДЕНИЕ :НЕДОСТУПНО)))
+       (equal (jv-grade *смерть*) '(:observational :unavailable)))
 (check "3/4 ОБЗОРНОЕ молчание: охват при основании напечатан, а не потреблён молча"
-       (find 'обзор_реестров (mapcar #'first (jv-cover *до*))))
+       (find 'registry_survey (mapcar #'first (jv-cover *до*))))
 
 ;; 4. гейт на необратимом
 (defparameter *журнал-до* (nth-value 1 (run-nolang *без-отзыва*)))
 (check "4/4 гейт на НЕОБРАТИМОМ сработал и записал основание и веру"
        (find-if (lambda (e) (and (eq (first e) :performed)
-                                 (eq (second e) 'закупка_запаса)
-                                 (eq (third e) 'основание_закупки)))
+                                 (eq (second e) 'stockpile)
+                                 (eq (third e) 'purchase_basis)))
                 *журнал-до*))
 
 (format t "~&── ОТЗЫВ КОРНЯ РОЖДАЕТ СИРОТУ (C5) ──~%")
 
 (defparameter *журнал* (nth-value 1 (run-nolang *формы*)))
-(defparameter *после* (gethash 'основание_закупки (run-nolang *формы*)))
+(defparameter *после* (gethash 'purchase_basis (run-nolang *формы*)))
 
 (check "отзыв КОРНЯ снимает оба свода сразу — основание пересчитано"
        (~= (jv-belief *после*) 0.0))
 (check "🔴 действие осиротело: основание больше не держит порог"
-       (find-if (lambda (e) (and (eq (first e) :orphaned) (eq (second e) 'закупка_запаса)))
+       (find-if (lambda (e) (and (eq (first e) :orphaned) (eq (second e) 'stockpile)))
                 *журнал*))
 (check "🔴 и оно НЕПОПРАВИМО: необратимому возмещать нечем"
        (find-if (lambda (e) (eq (first e) :irreparable)) *журнал*))
@@ -120,7 +120,7 @@
        (let ((p (append *без-отзыва*
                         '((action пометка :reversibility reversible
                                   :requires (>= belief 0.5) :else свернуть)
-                          (do пометка основание_закупки)))))
+                          (do пометка purchase_basis)))))
          (null (set-difference (errors-of p) '(:runtime :gate-fail :req)))))
 (check "требование ДНА у необратимого отвергается отдельно: это не защита, а её вид"
        (member :req (errors-of (append *без-отзыва*

@@ -93,10 +93,10 @@ claim высокое : строго from слабый
 ;;; останется прежним. Язык, чей тезис «нечестность невыразима», не должен рассчитывать на
 ;;; внимательного человека.
 (defparameter *файл*
-  (concatenate 'string (directory-namestring *load-pathname*) "../examples/фармакология.nol"))
+  (concatenate 'string (directory-namestring *load-pathname*) "../examples/pharmacology.nol"))
 (defparameter *фарма*
-  (with-open-file (s *файл* :external-format :utf-8)
-    (let ((d (make-string (file-length s)))) (subseq d 0 (read-sequence d s)))))
+  ;; прелюдия + программа: разделение мест — свойство запуска, семантику проверяем целиком
+  (example-source *файл*))
 
 (check "🔴 ИСТОРИЧЕСКОЕ РЕШЕНИЕ БОЛЬШЕ НЕ ТИПИЗИРУЕТСЯ"
        (member :req (mapcar #'terr-code (nth-value 2 (decide *фарма*)))))
