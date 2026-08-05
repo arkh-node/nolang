@@ -1,0 +1,11 @@
+; ожидается код 4 при --require пуш: программа НИЧЕГО не решала.
+; Без --require дала бы 0 = «ничему не воспрепятствовало» — это и есть обход пустотой.
+lattice provenance = rumour < verified
+
+witness observational : verified
+  says "знание есть, решения нет"
+  source my_run
+  evidence 9 for 0 against
+
+claim readiness
+  from observational

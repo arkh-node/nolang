@@ -1,0 +1,5 @@
+; ожидается код 1: не разбирается — но это ОТКЛОНЕНИЕ, а не поломка инструмента
+lattice grade = rumour < verified
+witness malformed : verified
+  says "no closing quote here
+  source somewhere

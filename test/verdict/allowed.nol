@@ -1,0 +1,16 @@
+; ожидается код 0: программа собрана, действие совершено
+lattice provenance = rumour < verified
+
+witness observational : verified
+  says "смотрела рендер глазами"
+  source my_run
+  evidence 9 for 0 against
+
+claim readiness
+  from observational
+
+reversible action record_it
+  gated by belief >= 0.1
+  else fold
+
+perform record_it on readiness

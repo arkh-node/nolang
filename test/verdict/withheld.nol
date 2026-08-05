@@ -1,0 +1,17 @@
+; ожидается код 4: программа законна, веры не хватило до порога
+lattice provenance = rumour < verified
+
+witness observational : verified
+  says "видела один раз"
+  source my_run
+  evidence 9 for 0 against
+
+claim readiness
+  from observational
+
+irreversible action push
+  needs grade >= verified
+  gated by belief >= 0.99
+  else fold
+
+perform push on readiness

@@ -1,23 +1,74 @@
 #!/usr/bin/env bash
-# Прогон .nol-программы: разбор → проверка → выполнение → показ.
-cd "$(dirname "$0")" || exit 1
+# Прогон .nol-программы: разбор → проверка → выполнение → показ → ВЕРДИКТ КОДОМ ВОЗВРАТА.
+#
+# Использование:
+#   ./run_example.sh ФАЙЛ.nol [--prelude ФАЙЛ.nolp] [--require ИМЯ_ДЕЙСТВИЯ]
+#
+# Коды возврата (единственный ответ машине; печать адресована человеку):
+#   0 допущено · 1 отклонено · 2 сбой сбора · 3 суда не было · 4 не допущено · 5 с пороком
+#
+# 🔴 --require ИМЯ. Без него программа, ничего не делающая, даёт «ничему не воспрепятствовало»
+#    = 0 = «можно». Спрашивающий про необратимое обязан НАЗВАТЬ действие: тогда молчание
+#    программы становится отказом, а не разрешением.
+#
+# 🔴 Путь и имя действия уходят в Лисп ПЕРЕМЕННЫМИ ОКРУЖЕНИЯ, а не подстановкой в исходник.
+#    Раньше «$F» вклеивался в текст программы — имя файла с кавычкой исполняло что угодно.
+#    Это тот же впрыск, который мы закрываем в цитатах разрешения, и лечится он так же:
+#    передавать адрес, а не текст.
+set -u
+cd "$(dirname "$0")" || exit 2
+
 F="${1:?укажите файл .nol}"
-cat > /tmp/_nol_run.lisp <<LISP
-(load "$(pwd)/src/nolang.lisp")
-(let ((src (with-open-file (s "$F" :external-format :utf-8)
-             (let ((d (make-string (file-length s))))
-               (subseq d 0 (read-sequence d s))))))
-  (multiple-value-bind (forms errs) (compile-nolang src)
-    (format t "~&── РАЗБОР: ~a объявлений ──~%" (length forms))
-    (let ((real (set-difference (mapcar #'terr-code errs) '(:runtime :gate-fail))))
-      (if real
-          (progn (format t "── ПРОВЕРКА: ОТКЛОНЕНО ──~%") (diagnose forms))
-          (progn (format t "── ПРОВЕРКА: принято ──~%")
-                 ;; замечания печатаем и при принятой программе: «свернётся, не хватило
-                 ;; столько-то» — ради этого статическая свёртка и нужна
-                 (when errs (diagnose forms)))))
-    (let ((отклонено (set-difference (mapcar #'terr-code errs) '(:runtime :gate-fail))))
-      (multiple-value-bind (store ledger) (run-nolang forms :carrier :морф)
-        (show-run store ledger :rejected (and отклонено t))))))
+shift || true
+REQ=""
+PRELUDE=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --require) REQ="${2:?--require требует имя действия}"; shift 2 ;;
+    # 🔴 Путь к прелюдии приходит СНАРУЖИ, от того, кто запускает суд, — и никогда из самой
+    #    программы. Дай программе указывать свою линейку, и разделение мест станет украшением.
+    --prelude) PRELUDE="${2:?--prelude требует файл}"; shift 2 ;;
+    *) printf 'неизвестный ключ: %s\n' "$1" >&2; exit 2 ;;
+  esac
+done
+
+if [ ! -r "$F" ]; then
+  printf '⛔ файл не читается: %s\n⟦NOLANG-VERDICT code=2 kind=СБОЙ⟧ нет файла\n' "$F" >&2
+  exit 2
+fi
+
+RUNNER=/tmp/_nol_run.lisp
+cat > "$RUNNER" <<'LISP'
+(load (merge-pathnames "src/verdict.lisp" (or (sb-ext:posix-getenv "NOL_HOME") "")))
+(let ((path (sb-ext:posix-getenv "NOL_PROGRAM"))
+      (req  (sb-ext:posix-getenv "NOL_REQUIRE"))
+      (pre  (sb-ext:posix-getenv "NOL_PRELUDE")))
+  (judge-and-exit path
+                  :require (and req (string/= req "") req)
+                  :prelude (and pre (string/= pre "") pre)))
 LISP
-sbcl --script /tmp/_nol_run.lisp
+
+OUT=$(mktemp /tmp/_nol_out.XXXXXX)
+if [ -n "$PRELUDE" ] && [ ! -r "$PRELUDE" ]; then
+  printf '⛔ прелюдия не читается: %s\n' "$PRELUDE" >&2
+  exit 2
+fi
+NOL_HOME="$(pwd)/" NOL_PROGRAM="$F" NOL_REQUIRE="$REQ" NOL_PRELUDE="$PRELUDE" \
+  sbcl --script "$RUNNER" > "$OUT" 2>&1
+RC=$?
+cat "$OUT"
+
+# ── 🔴 СВЕРКА КОДА И МАРКЕРА ─────────────────────────────────────────────────────
+# Судья — код возврата; маркер нужен ровно для одного: понять, высказался ли судья ВООБЩЕ.
+# `sbcl --script`, упав, сам выходит с 1 — то есть с нашим «отклонено»: сломанный инструмент
+# неотличим от строгого. Умер до вердикта → маркера нет → это СБОЙ (2), а не ответ языка.
+# Маркер ищется ЯКОРЕМ В НАЧАЛЕ СТРОКИ и сравнивается с кодом: подделать его изнутри
+# программы (через `says "…"`) можно, но подделка кода возврата процесса ей недоступна —
+# поэтому расхождение маркера с кодом тоже читается как сбой, а не как вердикт.
+MARK=$(grep -c "^⟦NOLANG-VERDICT code=$RC " "$OUT")
+rm -f "$OUT"
+if [ "$MARK" -eq 0 ]; then
+  printf '\n⚠️ вердикт не высказан (маркер отсутствует или не сходится с кодом %s) — считаю сбоем\n' "$RC" >&2
+  exit 2
+fi
+exit "$RC"

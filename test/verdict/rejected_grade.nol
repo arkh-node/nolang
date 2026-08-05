@@ -1,0 +1,17 @@
+; ожидается код 1: основание ниже требуемой степени — программы не должно быть
+lattice provenance = rumour < verified
+
+witness hearsay : rumour
+  says "говорят, работает"
+  source someone_elses_account
+  evidence 9 for 0 against
+
+claim readiness
+  from hearsay
+
+irreversible action push
+  needs grade >= verified
+  gated by belief >= 0.1
+  else fold
+
+perform push on readiness
