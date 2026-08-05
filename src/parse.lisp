@@ -165,6 +165,38 @@
                         "решётка из одной степени: сравнивать нечего")))
     (if product `(lattice ,name :product ,@items) `(lattice ,name ,@items))))
 
+(defun p-source ()
+  ;; source ИМЯ [: СТЕПЕНЬ] [from ИМЯ] [fingerprint "…"] [says "…"]
+  ;;
+  ;; 🔴 ИСТОЧНИК — ЭТО МЕРА, А НЕ ЗАМЕР, потому и живёт в прелюдии рядом с решёткой.
+  ;; До 05.08.2026 степень свидетеля ЗАЯВЛЯЛ автор программы, а `source` служил только ключом
+  ;; дедупликации; свидетель без источника становился «сам себе корнем» и был волен назначить
+  ;; себе любую степень. Пока `.nol` писал человек под присмотром — условность. Когда декларации
+  ;; пишет сам агент — дыра во всей конструкции: подъём степени ВНУТРИ вывода невыразим,
+  ;; а ложь НА ВХОДЕ выразима идеально.
+  ;;
+  ;; Степень не указана → ДНО решётки: знание без объявленного происхождения ничего не весит.
+  ;; `from` — происхождение: степень наследника не выше степени предка (тем же `⊓`).
+  (eat-word "source")
+  (let ((name (eat-ident "имя источника"))
+        (grade nil) (from nil) (fp nil) (says nil))
+    (when (punct? ":")
+      (advance)
+      (setf grade (eat-grade "степень источника")))
+    (loop
+      (cond ((word? "from")
+             (advance)
+             (when from (serr "у источника ~a уже объявлено происхождение" name))
+             (setf from (eat-ident "имя источника-предка")))
+            ((word? "fingerprint")
+             (advance)
+             (setf fp (eat-str "отпечаток источника")))
+            ((word? "says")
+             (advance)
+             (setf says (eat-str "что это за источник")))
+            (t (return))))
+    `(source ,name :grade ,grade :from ,from :fingerprint ,fp :says ,says)))
+
 (defun p-horizon ()
   ;; horizon ЧИСЛО
   ;; 🔴 ДВЕНАДЦАТОЕ НЕЗАПИСЫВАЕМОЕ СОСТОЯНИЕ: `horizon 0`. При нулевом горизонте
@@ -623,6 +655,7 @@
 
 (defun p-decl ()
   (cond ((word? "lattice") (p-lattice))
+        ((word? "source")  (p-source))
         ((word? "horizon") (p-horizon))
         ((word? "import")  (p-import))
         ((word? "witness") (p-witness))
@@ -635,7 +668,7 @@
         ((word? "perform") (p-perform))
         ((or (word? "reversible") (word? "compensable") (word? "irreversible")) (p-action))
         (t (serr "непонятное начало объявления: «~a». Ожидалось одно из: ~
-                  lattice · horizon · import · witness · ask · claim · rule · retract · revoke · ~
+                  lattice · source · horizon · import · witness · ask · claim · rule · retract · revoke · ~
                   permit · perform · ~
                   reversible/compensable/irreversible action"
                  (if (peek) (tok-val (peek)) "конец текста")))))

@@ -165,6 +165,55 @@
                    name (g-ru a) (g-ru b) (g-ru a) (g-ru b) (g-ru left)
                    (g-ru a) (g-ru b) (g-ru right)))))))))
 
+(defun source-class (name &optional (seen '()))
+  "Класс источника с учётом происхождения: степень наследника НЕ ВЫШЕ степени предка.
+   Возвращает (values степень ошибка). Цикл в цепи — ошибка, а не бесконечность."
+  (let ((rec (cdr (assoc name *sources*))))
+    (cond
+      ((null rec) (values nil :unknown))
+      ((member name seen) (values nil :cycle))
+      (t (let ((own (getf rec :grade))
+               (from (getf rec :from)))
+           (if (null from)
+               (values (or own (g-bot)) nil)
+               (multiple-value-bind (parent err) (source-class from (cons name seen))
+                 (cond
+                   (err (values nil err))
+                   ;; 🔴 ПО ЦЕПИ СТЕПЕНЬ ТОЛЬКО ПАДАЕТ — тем же `⊓`, что доказан в Agda.
+                   ;; Наследник не может быть строже предка: знание, пришедшее через
+                   ;; пересказ, не становится первоисточником оттого, что так объявлено.
+                   (t (values (if own (g-meet own parent) parent) nil))))))))))
+
+(defun chk-source (form)
+  ;; (source ИМЯ :grade степень :from предок :fingerprint "…" :says "…")
+  ;; Объявление живёт в ПРЕЛЮДИИ: источник — мера, а не замер.
+  (let* ((name (second form))
+         (rest* (cddr form))
+         (grade (getf rest* :grade))
+         (from  (getf rest* :from))
+         (g     (and grade (parse-grade grade))))
+    (when (assoc name *sources*)
+      (err! :source name "источник ~a объявлен дважды" name))
+    (when (and grade (null g))
+      (err! :grade name "неизвестная степень у источника ~a" name))
+    (when (and g (not (g-shape-ok-p *lattice* g)))
+      (err! :grade-shape name "у источника ~a ~a" name (g-shape-error g))
+      (setf g nil))
+    (when (and from (not (assoc from *sources*)))
+      (err! :source name
+            "источник ~a происходит от ~a, который не объявлен. ~
+             Предок объявляется ДО потомка — как и решётка до своего произведения."
+            name from))
+    (push (cons name (list :grade g :from from
+                           :fingerprint (getf rest* :fingerprint)
+                           :says (getf rest* :says)))
+          *sources*)
+    ;; цикл ловим сразу, а не при первом свидетеле
+    (multiple-value-bind (cls err) (source-class name)
+      (declare (ignore cls))
+      (when (eq err :cycle)
+        (err! :source name "происхождение источника ~a замыкается в цикл" name)))))
+
 (defun chk-witness (form)
   ;; (witness ID "текст" :grade строго :f 0.9 :c 0.8 [:module M])
   ;; 🔴 Свидетель модуля объявляет степень в шкале ИСТОЧНИКА; в окружение ложится φ(степень).
@@ -475,6 +524,7 @@
                (let ((h (head-of f)))
                  (cond ((string= h "horizon") (chk-horizon f))
                        ((string= h "lattice") (chk-lattice f))
+                       ((string= h "source")  (chk-source f))
                        ;; регистрация, а не проверка: об ошибке импорта уже сказано один раз
                        ((string= h "import")  (register-import f))
                        ((string= h "witness") (chk-witness f))
@@ -712,6 +762,7 @@
           (chk-unique form seen)
           (cond ((string= head "horizon") (chk-horizon form))
                 ((string= head "lattice") (chk-lattice form))
+                ((string= head "source")  (chk-source form))
                 ((string= head "import")  (chk-import form))
                 ((string= head "retract") (chk-retract form))
                 ((string= head "revoke")  (chk-revoke form))
