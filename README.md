@@ -12,7 +12,9 @@
 
 **A protocol of honest inference that cannot be broken — because the breach is inexpressible.**
 
-The name reads two ways, and both are meant. `NOL + lang`, and — **`no lang`**: what you write
+The name reads three ways, and all three are meant. First, its origin: **NOL is `Nevis Ontology
+Language`** — named in 2026 for the agent it was being built around, when the goal was stated as
+"an operating environment for you". Second, `NOL + lang`. Third — **`no lang`**: what you write
 here are not programs. There is no control flow, no recursion, no functions, and there will not be.
 You keep **a record**: what is known, what it stands on, and what was done on that basis.
 
@@ -130,7 +132,7 @@ perform recommend on benefit
 retract ten_trials because "the review was obliged to exclude this meta-analysis"
 ```
 
-Run it: `./run_example.sh examples/evidence-gate.nol`
+Run it: `./run_example.sh examples/evidence-gate.nol` — exit code **5**: performed, then orphaned.
 
 ```
 ЗАМЕЧАНИЕ [gate-fail] у RECOMMEND: необратимое RECOMMEND при массе веры 0.966 < 0.987.
@@ -317,9 +319,48 @@ cannot give us: it needs a *calibrated* posterior, and our `c` is uncalibrated b
 
 ```
 git clone https://github.com/arkh-node/nolang && cd nolang
-./run_tests.sh                                  # 34 test files + 5 Agda modules + the oracle
-./run_example.sh examples/evidence-gate.nol
+./run_tests.sh                                  # test files + Agda modules + the oracle
+./run_example.sh examples/chronicle.nol --prelude examples/chronicle.nolp --require write_to_chronicle   # what a YES looks like
+./run_example.sh examples/evidence-gate.nol     # what a gate is FOR
+./run_sexp.sh    examples/sexp/migration.nol    # the EARLY layer — a different carrier
 ```
+
+### The verdict is an exit code, not prose
+
+`run_example.sh` answers the machine with a return code; the printout is for the human.
+Until 30.07.2026 the verdict was read by grepping the output — and a witness whose `says "…"`
+contained the expected line **forged the answer**. A process's exit code cannot be written from
+inside the program it judges.
+
+| code | meaning | |
+|---|---|---|
+| 0 | allowed | the required action was performed |
+| 1 | rejected | the program should not exist (grade too low, threshold at the floor, syntax) |
+| 2 | tool failure | judging did not happen because something broke |
+| 3 | no trial took place | reserved: emitted by a disarmed gate, never by the language itself |
+| 4 | withheld | legal program, belief below threshold — or nothing was decided at all |
+| 5 | performed, but flawed | done, then orphaned / unauthorised / irreparable |
+
+`--require NAME` is not decoration: without it a program that does **nothing** returns "nothing
+stood in the way", and emptiness passes any gate. Whoever asks about an irreversible action must
+**name** it.
+
+### Nothing is hard-wired to us
+
+The language knows no names. `needs permission from <who>` takes any identifier — a person,
+a role, a council; `to "<target>"` takes any address. Our own ruler lives in a `.nolp` file
+outside the repository it judges, and the loop that uses it (`nolgate.sh`, not part of this
+repo) reads **its own** config: whose operator stream, which agent, who may permit by default.
+Take the language and write your own name in — there is nothing of ours to delete first.
+
+Identifiers are Latin throughout. Cyrillic lives where it belongs — inside strings: the text
+of a witness, the wording of a quote.
+
+**Two carriers share the `.nol` extension.** The surface syntax above is read by
+`compile-nolang`; `examples/sexp/` holds the early layer (s-expressions, three-valued gate over
+`(f,c)` atoms) read by `run-nol`. They are not the same language — see `examples/sexp/README.md`.
+Every example's expected exit code is declared in `examples/EXPECTED.tsv` and checked by
+`test/V2_examples.sh`, so a showcase that quietly stops working now fails the battery.
 
 `sbcl` required; `agda` optional (the battery reports its absence as a **failure**, not a pass).
 

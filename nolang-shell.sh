@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# Raise nolang in a window: colour banner, then an interactive SBCL REPL with the core loaded.
+# Поднять nolang в окне: баннер, затем приглашение САМОГО ЯЗЫКА.
+#
+# 🔴 `--noinform`: баннер SBCL здесь не к месту. Приглашение — заявление о том, ЧТО работает;
+#    печатать имя реализации значит говорить «это всё ещё лисп». Слова Алексея 31.07:
+#    «если ноланг стал языком, то это уже не SBCL».
+# 🔴 `--disable-debugger`: в отладчик реализации пользователь языка попадать не должен —
+#    ошибка обязана приходить словами языка, а не бэктрейсом на 26 кадров.
 cd /srv/langs/nolang || exit 1
 clear
 bash ./banner.sh
 echo
-sbcl --load repl.lisp
+exec sbcl --noinform --disable-debugger --load repl.lisp
