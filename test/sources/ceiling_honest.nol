@@ -1,0 +1,7 @@
+witness honest : (randomised, abstract)
+  says "пересказ, названный пересказом"
+  source abstracts
+  evidence 9 for 0 against
+
+claim c from honest
+perform publish on c

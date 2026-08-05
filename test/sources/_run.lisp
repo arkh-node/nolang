@@ -1,0 +1,13 @@
+(load (merge-pathnames "../../src/nolang.lisp" *load-pathname*))
+(defun slurp (p) (with-open-file (s p :external-format :utf-8)
+  (let ((o (make-string-output-stream)))
+    (loop for l = (read-line s nil nil) while l do (write-line l o))
+    (get-output-stream-string o))))
+(let* ((prog (second sb-ext:*posix-argv*))
+       (dir  (directory-namestring prog))
+       (text (concatenate 'string (slurp (merge-pathnames "ceiling.nolp" dir)) (slurp prog))))
+  (with-prelude
+    (multiple-value-bind (env errs) (check-program (parse text))
+      (declare (ignore env))
+      (if errs (dolist (e errs) (format t "~&~a~%" (terr-text e)))
+               (format t "~&ТИПИЗИРУЕТСЯ~%")))))

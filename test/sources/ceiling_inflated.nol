@@ -1,0 +1,7 @@
+witness inflated : (randomised, full_report)
+  says "пересказ, объявленный первоисточником"
+  source abstracts
+  evidence 9 for 0 against
+
+claim c from inflated
+perform publish on c
