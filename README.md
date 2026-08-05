@@ -244,7 +244,7 @@ kind of thing it is. Where a claim moved between lists, it is said so.
 
 ### 1. Proved by machine — Agda `--safe`, no postulates, no holes, rebuilt from scratch every run
 
-Five modules, **51 theorems**, by **Nevis**, a synthetic mind of the ArkH contour.
+**Seven modules**, by **Nevis**, a synthetic mind of the ArkH contour. On the count itself see **Status** below — this README once inflated it, and the battery's own counter is stricter than the prose.
 
 - **preservation** — the grade the compiler assigns *is* the grade the machine computes.
   (The formulation had to be corrected first: retraction *changes* the grade, so what is proved
@@ -460,6 +460,58 @@ premise inside two machine-checked proofs** (`support-never-drops`) and inside t
 rather than by argument: `⊕` is idempotent · "a disagreeing witness always lowers belief" ·
 "the compiler proves `b ≥ θ` on all paths" · the novelty claim above · a theorem count inflated
 by a broken regex · a test that declared a correct method violated on 0.4σ of noise.
+
+## Status — what is not settled
+
+Five things a reader is entitled to know before deciding what this is. Each is checkable in the
+tree; none is here as modesty.
+
+**1. The theorem count in this file was wrong, and the battery knew it.**
+Until 05.08.2026 the line above read *"Five modules, 51 theorems"*. There are **seven** modules,
+and `formal/count.sh` — the project's own counter — reports something the prose did not:
+
+```
+CONTENTFUL (passed the second gate): 5
+DEFINITIONAL (rungs, not proofs):    1
+UNMARKED:                          103   ← "a debt, not a result"
+```
+
+189 module-level statements typecheck under `--safe`. How many of them are *theorems worth
+naming* is a separate question, and it is **open**: 103 are not yet sorted into definitions
+versus proofs. The battery says this out loud on every run; the README did not. This is the
+**second** time a theorem count here was inflated — the first (a broken regex) is recorded below
+under withdrawn statements.
+
+**2. `(f,c)` is settled for revision and for conjunction, and open for the difference between
+"unknown" and "evenly split".**
+Revision was fixed on 26.07.2026 (`t-revise` adds evidence; confidence strictly rises).
+`c = ca·cb` survives only in `t-and`/`t-or`, where it is correct for *independent* events and the
+docstring says so. Idempotence is handled **structurally, not by convention**: support is a *set*
+of roots and mass is defined by membership, so a shared ancestor counts once (`∪-idem`, proved),
+while `⊕` is deliberately **not** idempotent (`⊕-not-idem`, proved) because two *distinct*
+witnesses must raise belief.
+🔴 What a scalar `c` still cannot express: the difference between *"I know it is even"* and
+*"I know nothing"*. That is what credal sets are for, and it is the open work — not idempotence.
+
+**3. What a pre-execution gate can enforce is a characterised class — and it has a ceiling.**
+Deterministic pre-execution gates enforce **exactly** the safety policies whose good prefixes are
+recognisable by register automata ([Theorem 1](https://arxiv.org/html/2607.22868v1)). Some
+properties are unreachable *in principle* — "every `pay` is eventually followed by `confirm`"
+cannot be enforced by an irreversible gate. So the honest reading of *"a breach that is
+inexpressible"* is: **inexpressible within the safety class, which is the class irreversibility
+lives in.** The ceiling is not ours; it is proved, and it is the right ceiling for this problem.
+
+**4. The oracle has a blind quarter.**
+1200 random programs against the compiled Agda model, zero divergences — and the harness is
+itself tested for its ability to say no: it catches a deliberately broken `g-meet` on **153 of
+200** programs. That is a strength and a boundary in one number: **roughly a quarter of breakages
+of that shape would pass unnoticed.**
+
+**5. Two things are demonstrations, not measurements.**
+The NARS bridge (`src/nars.lisp`) is loaded by its test alone — no module of `src/` pulls it, so
+there is no feedback loop; it is an external adapter, not a stone. And `revgate`'s 5→0 shows the
+mechanism on a fixed input; its own README admits an earlier version "risked fitting the
+threshold to the demo". Real measurement waits on point 2.
 
 ## Theory
 
