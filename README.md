@@ -232,6 +232,18 @@ withdrawn here once; we would rather name a predecessor than be told about one.
   Pre-registration by grammar. It does not make a chosen `s` *right*; it makes it impossible to
   fit after the fact.
 
+  **The idea of fixing a parameter before the data is old and is not ours** — pre-registration in
+  psychology, [Pre-SPEC](https://arxiv.org/pdf/1907.04078) in clinical trials, regulatory Bayesian
+  protocols. What differs is the **carrier of the discipline**. In all of those it is a *document*;
+  in [a 2026 protocol against LLM p-hacking](https://arxiv.org/abs/2606.27687) it is *time* (the
+  target model does not exist at commitment time, so "it cannot be hacked against"); in
+  [Imp](https://arxiv.org/abs/2607.20801) — the closest technical neighbour, an imprecise
+  probabilistic DSL whose type system separates declaration from inference — the separation is
+  *structural*, about where uncertainty lives in a type, and it has no caution parameter at all.
+  A **grammar** as the carrier, for the caution parameter of an imprecise model, is what a targeted
+  survey (06.08.2026) found no precedent for. ⚠️ A targeted survey is not a systematic one: absence
+  of a hit is not proof of absence.
+
   ⚠️ **And what this bound is not:** it is not conformal, and it carries **no coverage
   guarantee**. It measures how much ignorance remains at this evidence count — not the
   probability that the truth lies inside. Conformal calibration is orthogonal to it, not a
@@ -301,6 +313,14 @@ kind of thing it is. Where a claim moved between lists, it is said so.
   a 50/50 split is unreachable at θ=0.9, yet +500 witnesses for reach it. The upper bound is the
   limit of completing *what is already here*, not a prophecy. `unreachable-is-about-now` states
   that and nothing more.
+  🔴 **And the trichotomy itself is not ours.** `passed / reachable / unreachable` — comparing
+  *both* ends of the interval against a threshold — is **interval dominance**, a standard decision
+  criterion under imprecise probability, and a sibling of Yao's **three-way decisions**
+  (positive / boundary / negative = accept / defer / reject). `passed` is skeptical inference by
+  the lower probability; `unreachable` is its mirror. We reached it independently, from needing a
+  third outcome that is not a weak "no" — but a survey (06.08.2026) placed it squarely in existing
+  literature, and it was withdrawn as a claim to contribution before it reached a paper rather
+  than after. It stays in the language because it is right, not because it is new.
 
 - **SourceCeiling**: a grade cannot be raised by provenance. `ceiling` (the result is never
   above the source's class), `honest-preserved` (a claim at or below the class passes through
