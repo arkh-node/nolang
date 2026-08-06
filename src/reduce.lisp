@@ -30,8 +30,8 @@
 ;; ORIGIN — ближайший известный источник свидетеля. ROOTS/COLLAPSED — что вошло в свёртку
 ;; и что было поглощено как копия того же корня (см. red-claim).
 (defstruct (jv (:constructor jv (grade w+ w- &optional base cover leaned origin roots collapsed
-                                 dropped short-roots (k *k*))))
-  grade w+ w- base cover leaned origin roots collapsed
+                                 dropped short-roots (k *k*) at)))
+  grade w+ w- base cover leaned origin roots collapsed at
   ;; 🔴 ГОРИЗОНТ СОХРАНЯЕТСЯ В МОМЕНТ СОЗДАНИЯ, а не читается при вычислении веры.
   ;; Найдено при вводе `horizon` (29.07) — и это ВТОРОЙ раз за сутки, когда я нарушаю
   ;; собственный закон: «отложенное вычисление в контексте, которого больше нет, — это не
@@ -87,7 +87,10 @@
     ;; зависит от `k`. Форма с `:f`/`:c` (внутренние тесты) переводится, как прежде.
     (multiple-value-bind (w+ w-)
         (if (kw form :w+) (values (kw form :w+) (kw form :w- 0.0)) (fc->evidence f c))
-      (store-put store id (jv (or g (g-bot)) w+ w- nil nil nil origin)))))
+      ;; `at` — время события, если объявлено. Кладётся в значение, чтобы дожить до вывода
+      ;; наружу и до записи субъекта: при возврате «знал тогда» должно остаться фактом.
+      (store-put store id (jv (or g (g-bot)) w+ w- nil nil nil origin nil nil nil nil *k*
+                              (kw form :at))))))
 
 (defun red-ask (form store)
   (store-put store (second form) (sv (kw form :in) (kw form :reason))))

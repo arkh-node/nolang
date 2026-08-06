@@ -21,8 +21,8 @@
 ;;; `red-claim`: на их раздельности стоит доказательство Невис (см. шапку common.lisp).
 
 ;;; ── окружение проверяющего ──────────────────────────────────────────────────
-(defstruct (bnd (:constructor bnd (kind &key grade f c thr else origin roots)))
-  kind grade f c thr else origin
+(defstruct (bnd (:constructor bnd (kind &key grade f c thr else origin roots at)))
+  kind grade f c thr else origin at
   roots)   ; 🔴 ПОДДЕРЖКА как МНОЖЕСТВО корней (`formal/SupportSet.agda`). У свидетеля —
            ; {его корень}; у выведенного утверждения — ОБЪЕДИНЕНИЕ поддержек посылок.
            ; Прежде вывод не нёс корня вовсе, и свёртка группировала его по `nil`.
@@ -298,8 +298,10 @@
         (if (kw form :w+) (evidence->fc (kw form :w+) (kw form :w- 0.0))
             (values (kw form :f 0.9) (kw form :c 0.8)))
       (setf (gethash id *env*)
-            (bnd :jud :grade (or g (g-bot)) :f ff :c cc
-                 :origin root :roots (list root)))))))
+            ;; :at — время СОБЫТИЯ (когда свидетельство относится к миру), если объявлено.
+          ;; Время ФИКСАЦИИ отдельно не хранится: им служит порядок в журнале.
+          (bnd :jud :grade (or g (g-bot)) :f ff :c cc
+                 :origin root :roots (list root) :at (kw form :at)))))))
 
 (defun chk-ask (form)
   ;; (ask ID :in (corpus library) :reason "…")  → молчание, ЛИНЕЙНОЕ

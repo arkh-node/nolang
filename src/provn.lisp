@@ -126,7 +126,16 @@
                                    ("nolang:confidence" . ,(format nil "~,4f" c))
                                    ("nolang:belief" . ,(format nil "~,4f" (* f c)))
                                    ("nolang:weight_for" . ,(format nil "~,1f" (jv-w+ v)))
-                                   ("nolang:weight_against" . ,(format nil "~,1f" (jv-w- v)))))))
+                                   ("nolang:weight_against" . ,(format nil "~,1f" (jv-w- v)))
+                                   ;; 🔴 ДВА ВРЕМЕНИ (D4). `nolang:at` — когда свидетельство
+                                   ;; относится к МИРУ (объявлено данными, не вызовом часов:
+                                   ;; иначе возврат перестал бы воспроизводиться). Время
+                                   ;; ФИКСАЦИИ отдельным полем не пишется — им служит порядок
+                                   ;; в журнале, и он уже детерминирован.
+                                   ;; Противоречие «знал тогда / знаю теперь» становится двумя
+                                   ;; фактами с разными `at`, а не затиранием одного другим.
+                                   ,@(when (jv-at v)
+                                       `(("nolang:at" . ,(format nil "~a" (jv-at v)))))))))
              ;; свидетель происходит от своего корня
              (when (and (jv-origin v) (not (jv-base v)))
                (format out "  wasDerivedFrom(~a, ~a)~%"

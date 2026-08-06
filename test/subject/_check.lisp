@@ -98,3 +98,42 @@ continue from \"/tmp/_prev_test.nols\""))
     (declare (ignore env))
     (chk (and errs (eq (terr-code (first errs)) :continue))
          "`continue` не первой формой отвергнута: возврат — начало, а не середина")))
+
+;; ── ДВА ВРЕМЕНИ (D4) ────────────────────────────────────────────────────────
+;; Противоречие «знал тогда / знаю теперь» — два ФАКТА с разными `at`, а не затирание.
+(with-prelude
+  (let ((forms (parse "
+lattice design       = observational < randomised
+lattice transmission = unavailable < abstract < published < full_report
+lattice provenance   = design * transmission
+source s : (randomised, abstract)
+
+witness early : (randomised, abstract)
+  says \"март\"  source s  at 20260313  evidence 3 for 0 against
+
+witness late : (randomised, abstract)
+  says \"август\" source s  at 20260805  evidence 5 for 2 against
+
+claim c from early, late
+")))
+    (multiple-value-bind (env errs) (check-program forms)
+      (declare (ignore env))
+      (chk (null errs) "свидетели с временем события типизируются"))
+    (multiple-value-bind (st lg) (run-nolang forms :carrier :морф)
+      (declare (ignore lg))
+      (let ((e (gethash 'early st)) (l (gethash 'late st)))
+        (chk (and (jv-at e) (jv-at l) (/= (jv-at e) (jv-at l)))
+             "два времени доживают до склада и различны: знал тогда ≠ знаю теперь")))))
+
+;; время НЕ обязательно — без него всё работает как прежде
+(with-prelude
+  (multiple-value-bind (env errs)
+      (check-program (parse "
+lattice design       = observational < randomised
+lattice transmission = unavailable < abstract < published < full_report
+lattice provenance   = design * transmission
+source s : (randomised, abstract)
+witness w : (randomised, abstract) says \"без времени\" source s evidence 3 for 0 against
+"))
+    (declare (ignore env))
+    (chk (null errs) "время события необязательно — старые программы не сломаны")))
