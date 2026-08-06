@@ -629,8 +629,28 @@ change reads as *"different algorithm"* rather than *"tampered record"*.
 
 **What this still does not give:** whoever holds the chain from its first link can build a
 different one, equally consistent, and every fingerprint in it will agree. The honest sentence is
-**"forgery is never local"**, not "forgery is impossible". Closing that gap requires an anchor
-*outside* the system — a signature, a published digest, a second party — and it is not done.
+**"forgery is never local"**, not "forgery is impossible". No hash closes this, and not because
+the hash is weak: *"this history was not rewritten"* is a claim about the **world**, unprovable
+from inside the computation.
+
+Since 06.08.2026 `src/anchor.lisp` carries the machinery for the only actual remedy — a
+**witness**. A digest placed where someone other than us can see it turns "rewrite the history"
+into "diverge from someone else's record". Two things about it are worth stating plainly:
+
+- **An anchor cuts the chain in two.** Everything up to the last anchor cannot be rewritten
+  without contradicting the witness; everything after it is still only *"forgery is never local"*.
+  `chain-anchored-prefix` reports this as a **count** — *n of m links protected* — because the
+  difference between 40-of-40 and 3-of-40 is the difference between a protected history and an
+  unprotected one, and the old phrasing covered both.
+- **Anchor strength is a grade, on the same lattice as source classes**, and obeys the same law:
+  it cannot be raised by declaration. A digest written to our own disk is `:self` — *rejected*,
+  not accepted-with-a-note, because notes go unread. Only `:witnessed` (a second party holds a
+  copy) and `:notarised` (independent evidence of *time*) count.
+
+🔴 **And the part that is not done is not the code.** No channel is chosen and no digest has
+actually been published, so the protection currently in force is **zero links of zero**. The
+machinery is written so that choosing a channel changes data, not code — but until a digest is
+out there, this section describes a capability, not a defence.
 
 **7. Two things are demonstrations, not measurements.**
 The NARS bridge (`src/nars.lisp`) is loaded by its test alone — no module of `src/` pulls it, so
