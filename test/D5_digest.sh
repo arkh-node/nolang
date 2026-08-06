@@ -17,6 +17,9 @@
 # пропускает. Пропущенная сверка, не отличимая от пройденной, есть тот самый сломанный
 # сторож, который рапортует «спокойно» от слепоты.
 cd "$(dirname "$0")/.." || exit 1
+# 🔴 Корень берётся ОТ СКРИПТА, а не зашит: генерируемый лисп живёт в /tmp, и его
+# *load-pathname* указывает туда же — относительные пути внутри него не сработают.
+ROOT="$(pwd)"
 ok=0; fail=0
 say_ok()   { echo "  ✓ $1"; ok=$((ok+1)); }
 say_fail() { echo "  ✗ $1"; fail=1; }
@@ -39,8 +42,8 @@ INPUTS_PY='["", "abc",
  "Аристарх", "(horizon 3) (lattice provenance = design * transmission)",
  "a"*55, "a"*56, "a"*63, "a"*64, "a"*65, "я"*1000, "\x00\x01\x7f"]'
 
-cat > /tmp/nol_d5_mine.lisp <<'LISP'
-(load "/srv/langs/nolang/src/digest.lisp")
+{ echo "(defparameter *root* \"$ROOT/\")"; cat <<'LISP'
+(load (merge-pathnames "src/digest.lisp" *root*))
 (dolist (s (list "" "abc"
                  "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
                  "Аристарх"
@@ -54,7 +57,7 @@ cat > /tmp/nol_d5_mine.lisp <<'LISP'
                  (coerce (list (code-char 0) (code-char 1) (code-char 127)) 'string)))
   (format t "~a~%" (sha256-hex s)))
 LISP
-
+} > /tmp/nol_d5_mine.lisp
 sbcl --script /tmp/nol_d5_mine.lisp > /tmp/nol_d5_mine.txt 2>&1
 rc=$?
 if [ $rc -ne 0 ]; then
@@ -91,8 +94,8 @@ else
 fi
 
 # ── 2. СВОЙСТВА, РАДИ КОТОРЫХ МЕНЯЛИ sxhash ─────────────────────────────────
-cat > /tmp/nol_d5_prop.lisp <<'LISP'
-(load "/srv/langs/nolang/src/digest.lisp")
+{ echo "(defparameter *root* \"$ROOT/\")"; cat <<'LISP'
+(load (merge-pathnames "src/digest.lisp" *root*))
 (defun chk (c m) (format t "~&~a ~a~%" (if c "OK" "FAIL") m))
 
 ;; Лавина: один изменённый знак меняет отпечаток целиком, а не хвост.
@@ -130,7 +133,7 @@ cat > /tmp/nol_d5_prop.lisp <<'LISP'
               (let ((*print-pretty* t)) (sha256-hex "переносимость")))
      "отпечаток не зависит от настроек печати процесса")
 LISP
-
+} > /tmp/nol_d5_prop.lisp
 out=$(sbcl --script /tmp/nol_d5_prop.lisp 2>&1)
 while read -r line; do
   case "$line" in
@@ -143,9 +146,9 @@ echo "$out" | grep -q "Unhandled" && say_fail "свойства: необраб�
 # ── 3. ПРОВЕРКА НА РАЗЛИЧЕНИИ: ЛОВИТ ЛИ ПОДДЕЛКУ ────────────────────────────
 # 🔴 Сторож, не пойманный на искусственной поломке, — талисман, а не сторож.
 # Подсовываем цепи субъектов подделанное звено и требуем, чтобы она порвалась.
-cat > /tmp/nol_d5_tamper.lisp <<'LISP'
-(load "/srv/langs/nolang/src/nolang.lisp")
-(load "/srv/langs/nolang/src/subject.lisp")
+{ echo "(defparameter *root* \"$ROOT/\")"; cat <<'LISP'
+(load (merge-pathnames "src/nolang.lisp" *root*))
+(load (merge-pathnames "src/subject.lisp" *root*))
 (defun chk (c m) (format t "~&~a ~a~%" (if c "OK" "FAIL") m))
 
 ;; Сцена и след берутся из ЖИВОГО примера (test/subject/), а не сочиняются здесь.
@@ -159,7 +162,7 @@ cat > /tmp/nol_d5_tamper.lisp <<'LISP'
   (let ((i (search old s)))
     (if i (concatenate 'string (subseq s 0 i) new (subseq s (+ i (length old)))) s)))
 
-(defparameter *dir* "/srv/langs/nolang/test/subject/")
+(defparameter *dir* (merge-pathnames "test/subject/" *root*))
 (defparameter *scene-src* (slurp (merge-pathnames "scene.nolp" *dir*)))
 (defparameter *trace-src* (slurp (merge-pathnames "trace.nol" *dir*)))
 (defparameter *f* (parse (concatenate 'string *scene-src* *trace-src*)))
@@ -214,7 +217,7 @@ cat > /tmp/nol_d5_tamper.lisp <<'LISP'
   (chk (string/= (getf (cddr *s1*) :scene-digest) (getf (cddr s2) :scene-digest))
        "один знак в fingerprint источника — другой отпечаток сцены"))
 LISP
-
+} > /tmp/nol_d5_tamper.lisp
 out=$(sbcl --script /tmp/nol_d5_tamper.lisp 2>&1)
 while read -r line; do
   case "$line" in

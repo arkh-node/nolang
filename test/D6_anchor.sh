@@ -12,19 +12,22 @@
 # незамеченной — потому что она и должна проходить, и знать об этом важнее, чем радоваться
 # первым пяти галочкам.
 cd "$(dirname "$0")/.." || exit 1
+# 🔴 Корень берётся ОТ СКРИПТА, а не зашит: генерируемый лисп живёт в /tmp, и его
+# *load-pathname* указывает туда же — относительные пути внутри него не сработают.
+ROOT="$(pwd)"
 ok=0; fail=0
 
-cat > /tmp/nol_d6.lisp <<'LISP'
-(load "/srv/langs/nolang/src/nolang.lisp")
-(load "/srv/langs/nolang/src/subject.lisp")
-(load "/srv/langs/nolang/src/anchor.lisp")
+{ echo "(defparameter *root* \"$ROOT/\")"; cat <<'LISP'
+(load (merge-pathnames "src/nolang.lisp" *root*))
+(load (merge-pathnames "src/subject.lisp" *root*))
+(load (merge-pathnames "src/anchor.lisp" *root*))
 (defun chk (c m) (format t "~&~a ~a~%" (if c "OK" "FAIL") m))
 (defun slurp (p) (with-open-file (s p :external-format :utf-8)
   (let ((o (make-string-output-stream)))
     (loop for l = (read-line s nil nil) while l do (write-line l o))
     (get-output-stream-string o))))
 
-(defparameter *dir* "/srv/langs/nolang/test/subject/")
+(defparameter *dir* (merge-pathnames "test/subject/" *root*))
 (defparameter *f* (parse (concatenate 'string (slurp (merge-pathnames "scene.nolp" *dir*))
                                               (slurp (merge-pathnames "trace.nol" *dir*)))))
 
@@ -132,7 +135,7 @@ cat > /tmp/nol_d6.lisp <<'LISP'
   (chk (and (search "2 из 3" r) (search "НЕ защищено" r))
        "отчёт называет незащищённую часть вслух"))
 LISP
-
+} > /tmp/nol_d6.lisp
 out=$(sbcl --script /tmp/nol_d6.lisp 2>&1)
 while read -r line; do
   case "$line" in
