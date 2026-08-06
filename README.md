@@ -511,24 +511,33 @@ by a broken regex · a test that declared a correct method violated on 0.4σ of 
 
 ## Status — what is not settled
 
-Five things a reader is entitled to know before deciding what this is. Each is checkable in the
+Seven things a reader is entitled to know before deciding what this is. Each is checkable in the
 tree; none is here as modesty.
 
 **1. The theorem count in this file was wrong, and the battery knew it.**
-Until 05.08.2026 the line above read *"Five modules, 51 theorems"*. There are **seven** modules,
+Until 05.08.2026 the line above read *"Five modules, 51 theorems"*. There are now **ten** modules,
 and `formal/count.sh` — the project's own counter — reports something the prose did not:
 
 ```
-CONTENTFUL (passed the second gate): 5
-DEFINITIONAL (rungs, not proofs):    1
-UNMARKED:                          103   ← "a debt, not a result"
+CONTENTFUL (passed the second gate):  10
+DEFINITIONAL (rungs, not proofs):      5
+UNMARKED:                            221   ← "a debt, not a result"
 ```
 
-189 module-level statements typecheck under `--safe`. How many of them are *theorems worth
-naming* is a separate question, and it is **open**: 103 are not yet sorted into definitions
+236 module-level statements typecheck under `--safe`. How many of them are *theorems worth
+naming* is a separate question, and it is **open**: 221 are not yet sorted into definitions
 versus proofs. The battery says this out loud on every run; the README did not. This is the
 **second** time a theorem count here was inflated — the first (a broken regex) is recorded below
 under withdrawn statements.
+
+🔴 **And the counter itself was measuring short.** On 06.08.2026 the two counters of the same
+quantity were found to disagree: the test runner reported 236 module-level statements, while
+`formal/count.sh` reported 146. The counter matched only lines indented by *exactly* two spaces
+and so missed the entire top level of every module — the same defect Nevis had already fixed in
+the runner on 29.07, whose fix never reached this file. Ninety statements were counted **nowhere**,
+and the consequence fell on the one number that matters: **UNMARKED — the debt — read 131 when it
+was 221.** Understating a debt is worse than understating an achievement; the second is modesty,
+the first is reassurance. Both counters now use the identical rule.
 
 **2. `(f,c)` is settled for revision and for conjunction, and open for the difference between
 "unknown" and "evenly split".**
@@ -585,7 +594,25 @@ continue in a changed scene is the cheapest available guard against a silently s
 The real fix — robust calibration — is not done, and this line says so rather than implying
 otherwise.
 
-**6. Two things are demonstrations, not measurements.**
+**6. 🔴 The subject chain protects the history, not the last link — and no hash will change that.**
+A serialized subject carries a fingerprint of the previous one, so altering any single record
+breaks the chain at the next link: forgery cannot be local. Until 06.08.2026 those fingerprints
+were computed with `sxhash`, the implementation's hash-table function — collisions are findable,
+and, worse for our purpose, the value is **not required to agree across implementations or even
+across runs**. A fingerprint that depends on the machine cannot serve a chain whose whole point is
+to survive a change of machine (`:ran-on` is the first line of every ledger precisely because the
+carrier changes). It is now SHA-256, written in-tree with no dependencies so that a clean clone
+still builds, and — because a hand-written hash is worth exactly what it is checked against —
+diffed against two independent references on block boundaries, multibyte input and control bytes
+(`test/D5_digest.sh`, 14 checks). Records now carry the algorithm name (`sha256:…`), so a future
+change reads as *"different algorithm"* rather than *"tampered record"*.
+
+**What this still does not give:** whoever holds the chain from its first link can build a
+different one, equally consistent, and every fingerprint in it will agree. The honest sentence is
+**"forgery is never local"**, not "forgery is impossible". Closing that gap requires an anchor
+*outside* the system — a signature, a published digest, a second party — and it is not done.
+
+**7. Two things are demonstrations, not measurements.**
 The NARS bridge (`src/nars.lisp`) is loaded by its test alone — no module of `src/` pulls it, so
 there is no feedback loop; it is an external adapter, not a stone. And `revgate`'s 5→0 shows the
 mechanism on a fixed input; its own README admits an earlier version "risked fitting the

@@ -29,8 +29,15 @@
 ;;;; Иначе при возврате мы поверили бы прошлому себе на слово.
 
 (load (merge-pathnames "verdict.lisp" *load-pathname*))
+(load (merge-pathnames "digest.lisp" *load-pathname*))
 
-(defparameter *subject-version* 2)
+;;; 🔴 ВЕРСИЯ ПОДНЯТА 2 → 3 (06.08.2026): отпечатки перешли с `sxhash` на SHA-256.
+;;; Записи версии 2 НЕСОВМЕСТИМЫ — их отпечатки не сойдутся, и это правильно, но диагноз
+;;; должен читаться как «другой алгоритм», а не как «подделка». Версия и есть тот диагноз:
+;;; без неё расхождение алгоритмов выглядело бы точно так же, как порча записи, а различить
+;;; их постфактум нечем. Причины смены — в шапке `digest.lisp`; коротко: `sxhash` подбираем
+;;; и не обязан совпадать между носителями, а цепь субъектов обязана переживать смену носителя.
+(defparameter *subject-version* 3)
 
 ;;; ── ЦЕПЬ СУБЪЕКТОВ: ИСТОРИЮ НЕЛЬЗЯ ПЕРЕПИСАТЬ ЗАДНИМ ЧИСЛОМ ────────────────
 ;;;
@@ -59,10 +66,9 @@
    Считается по печатному виду в фиксированном порядке — иначе тот же субъект дал бы
    разные отпечатки в зависимости от порядка ключей."
   (let ((*print-pretty* nil) (*print-readably* nil) (*package* (find-package :cl-user)))
-    (format nil "~a"
-            (sxhash (format nil "~s|~s|~s|~s"
-                            (subject-scene s) (subject-trace s)
-                            (subject-seal s) (subject-prev s))))))
+    (digest-string (format nil "~s|~s|~s|~s"
+                           (subject-scene s) (subject-trace s)
+                           (subject-seal s) (subject-prev s)))))
 
 ;;; ── СЕРИАЛИЗАЦИЯ ────────────────────────────────────────────────────────────
 
@@ -103,7 +109,7 @@
    и то и другое). Против тщательной нужен внешний якорь — подпись или хранение отпечатка
    отдельно от записи. Это этап D5, и до него говорить «подделка обнаруживается» нельзя."
   (let ((*print-pretty* nil) (*print-readably* nil) (*package* (find-package :cl-user)))
-    (format nil "~a" (sxhash (format nil "~s" scene)))))
+    (digest-string (format nil "~s" scene))))
 
 (defun serialize-subject (forms ledger &key (carrier nil) (prev nil))
   "Формы + журнал → запись субъекта (список). Читаемо и печатаемо `prin1`.
