@@ -184,6 +184,19 @@
                    ;; пересказ, не становится первоисточником оттого, что так объявлено.
                    (t (values (if own (g-meet own parent) parent) nil))))))))))
 
+(defun chk-continue (form pos)
+  ;; (continue :from "путь")  — возврат в прежнего себя. ОБЯЗАН быть первой формой.
+  ;;
+  ;; 🔴 «Первая» проверяется здесь, а не в разборе: разбор не знает порядка. И проверяется
+  ;; строго — не «желательно первой», а «иначе не типизируется». Восстановление посреди
+  ;; работы — это присвоение чужого склада под свою уже объявленную меру.
+  (unless (zerop pos)
+    (err! :continue (second form)
+          "`continue from` обязана быть ПЕРВОЙ формой программы (сейчас ~:r). ~
+           Возврат — начало, а не середина: сперва становишься собой прежним, потом ~
+           продолжаешь. Иначе прежний субъект приходит в меру, объявленную после него."
+          (1+ pos))))
+
 (defun chk-source (form)
   ;; (source ИМЯ :grade степень :from предок :fingerprint "…" :says "…")
   ;; Объявление живёт в ПРЕЛЮДИИ: источник — мера, а не замер.
@@ -786,11 +799,14 @@
         (*dead* '()) (*done* '())
         (seen (make-hash-table :test #'eq))
         (*corpus-c* (collect-corpus-c forms)))
-    (dolist (form forms)
+    (let ((pos -1))
+     (dolist (form forms)
+      (incf pos)
       (when (consp form)
         (let ((head (head-of form)))
           (chk-unique form seen)
-          (cond ((string= head "horizon") (chk-horizon form))
+          (cond ((string= head "continue") (chk-continue form pos))
+                ((string= head "horizon") (chk-horizon form))
                 ((string= head "lattice") (chk-lattice form))
                 ((string= head "source")  (chk-source form))
                 ((string= head "import")  (chk-import form))
@@ -804,7 +820,7 @@
                 ((string= head "do")      (chk-do form))
                 ((string= head "rule") nil)   ; раскрыто при разборе, см. assert-covers выше
                 (t (err! :unknown-form (first form) "неизвестная форма ~a" (first form))))
-          (push form *done*))))
+          (push form *done*)))))
     ;; ── линейность молчания: долги не прощаются (заказ §5.3) ──
     (maphash (lambda (id st)
                (when (eq st :pending)

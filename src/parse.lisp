@@ -253,6 +253,20 @@
 ;;; чужое `[строго]` становится нашим `[строго]` без единого свидетеля.
 ;;; 🔴 И таблица, а НЕ выражение: кто умеет вычислить свою степень — назначит себе веру
 ;;; (та же граница языка и рантайма, ГРАММАТИКА §5-bis). Таблица конечна и проверяема перебором.
+(defun p-continue ()
+  ;; continue from "путь"
+  ;;
+  ;; 🔴 ФОРМА ВОЗВРАТА, И ОНА ОБЯЗАНА БЫТЬ ПЕРВОЙ. Проверка «первая» — в чекере, здесь разбор.
+  ;;
+  ;; Почему первой и никак иначе: восстановление посреди работы означало бы, что программа
+  ;; может подмешать в свой склад чужой субъект уже после того, как объявила свою меру. Тогда
+  ;; степени пришли бы в чужой шкале — ровно то отмывание на границе, против которого заведён
+  ;; `import` с обязательной φ. Возврат — НАЧАЛО, а не середина: сперва становишься собой
+  ;; прежним, потом продолжаешь. Иначе это не продолжение, а присвоение.
+  (eat-word "continue")
+  (eat-word "from" "возврат обязан назвать, ОТКУДА продолжается: `continue from \"путь\"`")
+  `(continue :from ,(eat-str "путь к записи субъекта")))
+
 (defun p-import ()
   ;; import ИМЯ lattice ИМЯ via СТЕПЕНЬ -> СТЕПЕНЬ (, СТЕПЕНЬ -> СТЕПЕНЬ)*
   (eat-word "import")
@@ -654,7 +668,8 @@
         `(permit ,a :quote ,quote* :who ,who :at ,(eat-str "адрес разрешения"))))))
 
 (defun p-decl ()
-  (cond ((word? "lattice") (p-lattice))
+  (cond ((word? "continue") (p-continue))
+        ((word? "lattice") (p-lattice))
         ((word? "source")  (p-source))
         ((word? "horizon") (p-horizon))
         ((word? "import")  (p-import))
@@ -668,7 +683,7 @@
         ((word? "perform") (p-perform))
         ((or (word? "reversible") (word? "compensable") (word? "irreversible")) (p-action))
         (t (serr "непонятное начало объявления: «~a». Ожидалось одно из: ~
-                  lattice · source · horizon · import · witness · ask · claim · rule · retract · revoke · ~
+                  continue · lattice · source · horizon · import · witness · ask · claim · rule · retract · revoke · ~
                   permit · perform · ~
                   reversible/compensable/irreversible action"
                  (if (peek) (tok-val (peek)) "конец текста")))))

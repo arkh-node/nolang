@@ -56,3 +56,45 @@
 (let ((printed (format nil "~s" *subj*)))
   (chk (and (search ":SCENE" printed) (search ":TRACE" printed) (search ":SEAL" printed))
        "в записи ровно три части: сцена, след, печать — состояние не сохраняется"))
+
+;; ── ПРОДОЛЖЕНИЕ: continue from ──────────────────────────────────────────────
+(subject-write *subj* "/tmp/_prev_test.nols")
+
+;; 6. продолжение поверх восстановленного: прежнее воспроизводится, новое добавляется
+(let ((cont (parse "continue from \"/tmp/_prev_test.nols\"
+
+witness later : (randomised, abstract)
+  says \"пришло после перерыва\"
+  source abstracts
+  evidence 4 for 0 against
+
+claim c2 from honest, later
+perform publish on c2
+")))
+  (multiple-value-bind (forms err) (resolve-continuation cont)
+    (if err (chk nil (format nil "продолжение не собралось: ~a" err))
+        (with-prelude
+          (multiple-value-bind (env errs) (check-program forms)
+            (declare (ignore env))
+            (if errs (chk nil "продолжение не типизируется")
+                (multiple-value-bind (st lg) (run-nolang forms :carrier :морф)
+                  (declare (ignore st))
+                  (chk (= 3 (length lg))
+                       "продолжение: прежнее действие воспроизведено, новое добавлено"))))))))
+
+;; 7. 🔴 продолжение с подделанным субъектом НЕ проходит — иначе возврат был бы дырой
+(let ((bad (copy-tree *subj*)))
+  (setf (getf (cddr bad) :seal) '((:ran-on :морф nil)))
+  (subject-write bad "/tmp/_bad_test.nols")
+  (multiple-value-bind (forms err) (resolve-continuation (parse "continue from \"/tmp/_bad_test.nols\""))
+    (declare (ignore forms))
+    (chk (eq err :seal-differs) "продолжение с подделанным субъектом отвергнуто")))
+
+;; 8. `continue` не первой формой — не типизируется
+(with-prelude
+  (multiple-value-bind (env errs)
+      (check-program (parse "horizon 20
+continue from \"/tmp/_prev_test.nols\""))
+    (declare (ignore env))
+    (chk (and errs (eq (terr-code (first errs)) :continue))
+         "`continue` не первой формой отвергнута: возврат — начало, а не середина")))

@@ -137,3 +137,40 @@
   (with-open-file (in path :external-format :utf-8)
     (let ((*package* (find-package :cl-user)))
       (read in))))
+
+
+;;; ── ПРОДОЛЖЕНИЕ: `continue from` ───────────────────────────────────────────
+
+(defun continue-form-p (f)
+  (and (consp f) (string= (head-of f) "continue")))
+
+(defun resolve-continuation (forms)
+  "Если программа начинается с `continue from \"путь\"` — восстановить прежнего субъекта и
+   вернуть ПОЛНЫЙ список форм: его сцена + его след + новые формы.
+   → (values формы ошибка).
+
+   🔴 ПОЧЕМУ ВОССТАНОВЛЕННЫЕ ФОРМЫ ИДУТ ПЕРВЫМИ И ЦЕЛИКОМ. Соблазн — взять из прежнего
+   субъекта «итоги» и продолжить с них. Тогда новые свидетельства встретились бы с ВЫВОДАМИ,
+   а не с посылками, и прежняя работа стала бы неоспоримой: её не из чего оспорить. Здесь
+   вместо этого подставляются посылки, и весь прогон идёт заново — новое свидетельство
+   спорит со старым на равных, отзыв работает через всю историю, а не только по свежей части.
+   Цена — прогон длиннее. Плата за то, что прошлое остаётся оспоримым.
+
+   Сцена берётся ТОЛЬКО из записи: продолжение не вправе объявить свою меру поверх прежней.
+   Если оно попробует — столкнётся с `chk-unique` и не соберётся, как и положено."
+  (let ((head (first forms)))
+    (if (not (continue-form-p head))
+        (values forms nil)
+        (let* ((path (getf (cdr head) :from))
+               (s (handler-case (subject-read path)
+                    (error () nil))))
+          (cond
+            ((null s) (values nil :subject-unreadable))
+            (t (multiple-value-bind (ok lg why) (re-enter s)
+                 (declare (ignore lg))
+                 (if (not ok)
+                     (values nil (or why :re-entry-failed))
+                     (values (append (subject-scene s)
+                                     (subject-trace s)
+                                     (rest forms))
+                             nil)))))))))
