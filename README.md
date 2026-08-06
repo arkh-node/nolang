@@ -553,7 +553,7 @@ project keeps catching in itself. They are kept apart:
 | representative / copies | `Representative` | — | ✅ |
 | re-entry (replay, not load) | `ReEntry` | — | ✅ `C2_subject`, `V7` |
 | **gate** (θ, permit, outcome) | `Gate` ✅ *(added 06.08, see below)* | — | ✅ `01_gate`, `99_theta` |
-| **ledger** (record sequence, refusal as value) | 🔴 **not proved** | — | ✅ `V1`–`V6` |
+| **ledger** (record sequence, refusal as value) | `Ledger` ✅ *(added 06.08)* | — | ✅ `V1`–`V6` |
 | **quantifiers** (`all`, `exists`) | 🔴 **not proved** | — | ✅ `B1_quant`, `G1_query` |
 | **digest / anchor** | 🔴 **not proved** | — | ✅ `D5`, `D6`, `D7` |
 | **θ-calibration under drift** | 🔴 **not proved** | — | ✅ `R1_robustness` |
@@ -581,7 +581,29 @@ not forbidden**, because refusal here is a value with a shortfall rather than a 
 ⚠️ **What is *not* proved there:** that θ is the *right* threshold. That is a claim about the
 world, and it stays with the human — and with the prelude, which fixes θ before the data.
 
-**The ledger remains unproved**, and it is now the most load-bearing gap left.
+**The ledger is now proved too** (`formal/Ledger.agda`), and it carries the two promises that
+had been words until today:
+
+> **Refusal is a value with a shortfall, not a crash.** When the gate folds, the shortfall is
+> *strictly positive* — a number you can produce, showing exactly what was missing
+> (`folded-has-shortfall`). And when the threshold is met, the shortfall is **zero**: without
+> that second half the first is satisfied by a language that attaches a shortfall to everything.
+
+> **A collapsed basis appends, it never erases.** Revision produces `orphaned` records *in front
+> of* the ledger; the original `performed` record is still there afterwards
+> (`performed-survives-orphaning`). Retraction does not undo the past — it writes down that the
+> past no longer holds. That is precisely why this history is auditable: nothing disappears
+> from it.
+
+Also proved: what was **folded never orphans** — an action that did not happen cannot be orphaned
+later, or the language would blur "did it for nothing" into "did not do it".
+
+⚠️ **Not proved, and it is the boundary that matters:** that the ledger corresponds to what
+happened *in the world*. A `performed` record says the language permitted an action, not that the
+world underwent it. That gap is method, not defect.
+
+**What remains without proof:** quantifiers, the digest/anchor machinery, θ-calibration under
+drift, and the prelude/programme split.
 
 **And the oracle column is nearly empty on purpose:** the compiled model computes the *grade*
 (T-CLAIM plus retraction) and nothing else. Everything else in that column would be a lie.
