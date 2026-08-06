@@ -529,6 +529,45 @@ rather than by argument: `⊕` is idempotent · "a disagreeing witness always lo
 "the compiler proves `b ≥ θ` on all paths" · the novelty claim above · a theorem count inflated
 by a broken regex · a test that declared a correct method violated on 0.4σ of noise.
 
+## Coverage map — what is proved, what is only tested
+
+Three different things get called "checked" here, and conflating them is the failure mode this
+project keeps catching in itself. They are kept apart:
+
+- **proved** — a machine-checked theorem in Agda under `--safe`;
+- **oracle** — Lisp compared against the *compiled proved model* on random programs; this bounds
+  divergence by trial count, it does not prove equivalence;
+- **battery** — run on cases and invariants; evidence, not proof.
+
+| mechanism | proved (Agda) | oracle | battery |
+|---|---|---|---|
+| grade lattice, meet, order | `Preservation`, `SourceCeiling` | ✅ | ✅ |
+| static grade = runtime grade | `Preservation` | ✅ | ✅ |
+| **source ceiling** (grade not raised by provenance) | `SourceCeiling` | — | ✅ `B1_source_ceiling`, `I2` |
+| support set, shared root counted once | `SupportSet` | — | ✅ |
+| belief mass, revision `⊕` | `BeliefMass` | — | ✅ |
+| **credal bound** (belief as a segment) | `CredalBound` | — | ✅ `C1_credal`, `I2` |
+| actions, statuses, irreversibility | `Act` | — | ✅ |
+| preconditions (honest ones survive) | `Precondition` | — | ✅ `06_types`, `A1_bridge` |
+| module import (`⊓` preserved) | `ModuleImport` | — | ✅ |
+| representative / copies | `Representative` | — | ✅ |
+| re-entry (replay, not load) | `ReEntry` | — | ✅ `C2_subject`, `V7` |
+| **gate** (θ, permit, outcome) | 🔴 **not proved** | — | ✅ `01_gate`, `99_theta` |
+| **ledger** (record sequence, refusal as value) | 🔴 **not proved** | — | ✅ `V1`–`V6` |
+| **quantifiers** (`all`, `exists`) | 🔴 **not proved** | — | ✅ `B1_quant`, `G1_query` |
+| **digest / anchor** | 🔴 **not proved** | — | ✅ `D5`, `D6`, `D7` |
+| **θ-calibration under drift** | 🔴 **not proved** | — | ✅ `R1_robustness` |
+| **prelude/programme split** (the moment rule) | 🔴 **not proved** | — | ✅ `V3_prelude` |
+| PROV-N export | — (one-way, by design) | — | ✅ `F1_provn` |
+
+🔴 **Read the gaps, not the ticks.** The formal part covers **grades and actions**. The gate — the
+single place where this language commits to something irreversible — is **not in it**, and neither
+is the ledger. Those two are the most load-bearing untested-by-proof parts of the system, and
+saying so plainly is worth more than the twelve rows above it.
+
+**And the oracle column is nearly empty on purpose:** the compiled model computes the *grade*
+(T-CLAIM plus retraction) and nothing else. Everything else in that column would be a lie.
+
 ## Status — what is not settled
 
 Seven things a reader is entitled to know before deciding what this is. Each is checkable in the
@@ -628,9 +667,25 @@ generator's diversity while claiming to measure the watchman's eyesight. The bat
 both numbers and asserts **equality**, not a threshold.
 
 ⚠️ The real limitation this exposes is in the **generator**, not the harness: 12% of the sample is
-inert for this class of corruption. Sensitivity to other breakages — the source ceiling, the gate,
-the ledger — is **not yet measured at all**, and until it is, this section speaks only about
-`g-meet`.
+inert for this class of corruption.
+
+**Sensitivity to the other load-bearing places is now measured too** (`test/mutants.sh`, added
+06.08.2026). Nine deliberate corruptions — the lattice meet, the order, the source ceiling, the
+credal bound, the gate, the ledger, retraction, the subject digest, the anchor's strength — are
+applied one at a time to the sources, with the full Lisp battery run against each. **All nine are
+caught; no holes.**
+
+🔴 **But the useful number is not nine — it is how many checks catch each one.** `g-meet` is
+caught by 15 tests at once; the gate by 9; the ledger by 6. Three places are caught by **exactly
+one**: the source ceiling (`B1_source_ceiling.sh`), the credal interval collapsing to a point
+(`C1_credal.sh`), and the anchor's strength being overstated (`D6_anchor.sh`). That is not a hole
+today — it is a **single point of support**. If that one battery breaks, or turns green for the
+wrong reason (which happened twice in a single day here), the corruption passes in silence. The
+stand prints this explicitly rather than leaving the reader to count columns.
+
+⚠️ The stand runs the Lisp battery only — corrupting a Lisp function cannot affect the Agda
+modules, and a full rebuild costs minutes. It is therefore *not* part of `run_tests.sh`; it is run
+deliberately. Said plainly rather than left to be discovered.
 
 **5. 🔴 The threshold's guarantee rests on exchangeability — and does not survive its loss.**
 `theta-conformal` uses the ledger as a calibration set. That is a real strength: it needs no
