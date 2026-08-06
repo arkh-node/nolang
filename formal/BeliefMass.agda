@@ -53,14 +53,17 @@ record E : Set where
 open E
 
 -- полный вес
+-- ⟦определение⟧
 wt : E → ℕ
 wt x = w⁺ x + w⁻ x
 
 -- молчание: ноль свидетельств. Оно же нейтраль ревизии.
+-- ⟦определение⟧
 silence : E
 silence = ev 0 0
 
 -- ревизия: сложение векторов (АЛГЕБРА_v0 §2.2)
+-- ⟦определение⟧
 _⊕_ : E → E → E
 x ⊕ y = ev (w⁺ x + w⁺ y) (w⁻ x + w⁻ y)
 
@@ -70,16 +73,20 @@ infixl 6 _⊕_
 -- 2. ⊕ — коммутативный моноид с нейтралью «молчание»
 -- ------------------------------------------------------------
 
+-- ⟦определительное⟧
 ⊕-comm : ∀ x y → x ⊕ y ≡ y ⊕ x
 ⊕-comm x y = cong₂ ev (+-comm (w⁺ x) (w⁺ y)) (+-comm (w⁻ x) (w⁻ y))
 
+-- ⟦определительное⟧
 ⊕-assoc : ∀ x y z → (x ⊕ y) ⊕ z ≡ x ⊕ (y ⊕ z)
 ⊕-assoc x y z = cong₂ ev (+-assoc (w⁺ x) (w⁺ y) (w⁺ z))
                          (+-assoc (w⁻ x) (w⁻ y) (w⁻ z))
 
+-- ⟦определительное⟧
 ⊕-identityʳ : ∀ x → x ⊕ silence ≡ x
 ⊕-identityʳ x = cong₂ ev (+-identityʳ (w⁺ x)) (+-identityʳ (w⁻ x))
 
+-- ⟦определительное⟧
 ⊕-identityˡ : ∀ x → silence ⊕ x ≡ x
 ⊕-identityˡ x = refl
 
@@ -87,6 +94,7 @@ infixl 6 _⊕_
 --    (В паре с решёткой ⊓ из Preservation.agda, которая идемпотентна и только
 --     деградирует. Два носителя ведут себя противоположно — это и есть
 --     «вера накапливается, честность деградирует».)
+-- ⟦содержательное⟧
 ⊕-not-idem : ¬ (∀ x → x ⊕ x ≡ x)
 ⊕-not-idem h with h (ev 1 0)
 ... | ()
@@ -99,20 +107,25 @@ infixl 6 _⊕_
 module WithPrior (k : ℕ) (k>0 : 0 < k) where
 
   -- знаменатель массы веры
+  -- ⟦определение⟧
   den : E → ℕ
   den x = wt x + k
 
   -- b(x) < b(y)  ⟺  w⁺x · den y < w⁺y · den x
+  -- ⟦определение⟧
   _b<_ : E → E → Set
   x b< y = w⁺ x * den y < w⁺ y * den x
 
+  -- ⟦определение⟧
   _b≡_ : E → E → Set
   x b≡ y = w⁺ x * den y ≡ w⁺ y * den x
 
   -- частота свидетеля ниже массы веры:  f(e) = w⁺e/wt e  <  b(x) = w⁺x/den x
+  -- ⟦определение⟧
   _f<_ : E → E → Set
   e f< x = w⁺ e * den x < w⁺ x * wt e
 
+  -- ⟦определение⟧
   _f≡_ : E → E → Set
   e f≡ x = w⁺ e * den x ≡ w⁺ x * wt e
 
@@ -120,6 +133,7 @@ module WithPrior (k : ℕ) (k>0 : 0 < k) where
   -- 3.1 Ключевое разложение знаменателя после ревизии
   -- ----------------------------------------------------------
 
+  -- ⟦определительное⟧
   den-⊕ : ∀ x e → den (x ⊕ e) ≡ den x + wt e
   den-⊕ x e =
     begin
@@ -169,17 +183,20 @@ module WithPrior (k : ℕ) (k>0 : 0 < k) where
       trans (cong (w⁺ x *_) (den-⊕ x e))
             (*-distribˡ-+ (w⁺ x) (den x) (wt e))
 
+  -- ⟦содержательное⟧
   witness-drops : ∀ x e → (x ⊕ e) b< x → e f< x
   witness-drops x e p =
     +-cancelˡ-< (w⁺ x * den x) (w⁺ e * den x) (w⁺ x * wt e)
       (subst₂ _<_ (expand-l x e) (expand-r x e) p)
 
+  -- ⟦содержательное⟧
   witness-drops⁻¹ : ∀ x e → e f< x → (x ⊕ e) b< x
   witness-drops⁻¹ x e q =
     subst₂ _<_ (sym (expand-l x e)) (sym (expand-r x e))
       (+-monoʳ-< (w⁺ x * den x) q)
 
   -- неподвижная точка: свидетель с частотой РОВНО в массу веры ничего не меняет
+  -- ⟦содержательное⟧
   witness-fixed : ∀ x e → e f≡ x → (x ⊕ e) b≡ x
   witness-fixed x e q =
     trans (expand-l x e)
@@ -193,6 +210,7 @@ module WithPrior (k : ℕ) (k>0 : 0 < k) where
   --     склад ДО отзыва есть (склад после) ⊕ (отозванный).
   -- ----------------------------------------------------------
 
+  -- ⟦содержательное⟧
   retract-drops : ∀ x e → x b< (x ⊕ e) → w⁺ x * wt e < w⁺ e * den x
   retract-drops x e p =
     +-cancelˡ-< (w⁺ x * den x) (w⁺ x * wt e) (w⁺ e * den x)
@@ -206,9 +224,11 @@ module WithPrior (k : ℕ) (k>0 : 0 < k) where
 
   -- граница Эйн-Соф в чистом виде: числитель строго меньше знаменателя,
   -- то есть масса веры никогда не достигает единицы
+  -- ⟦содержательное⟧
   b<1 : ∀ x → w⁺ x < den x
   b<1 x = ≤-trans (s≤s (m≤m+n (w⁺ x) (w⁻ x))) (m<m+n (wt x) k>0)
 
+  -- ⟦содержательное⟧
   support-never-drops : ∀ x n → 0 < n → ¬ ((x ⊕ ev n 0) b< x)
   support-never-drops x n n>0 p = <-irrefl refl (≤-trans got bound)
     where

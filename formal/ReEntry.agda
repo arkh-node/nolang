@@ -39,12 +39,15 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.Nat using (Nat; zero; suc)
 open import Agda.Builtin.List using (List; []; _∷_)
 
+-- ⟦определительное⟧
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
 
+-- ⟦определительное⟧
 trans : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
 trans refl q = q
 
+-- ⟦определительное⟧
 cong : ∀ {A B : Set} {x y : A} (f : A → B) → x ≡ y → f x ≡ f y
 cong f refl = refl
 
@@ -61,9 +64,11 @@ record MeetSemilattice : Set₁ where
 module Core (L : MeetSemilattice) where
   open MeetSemilattice L
 
+  -- ⟦определение⟧
   _≤ᴳ_ : G → G → Set
   a ≤ᴳ b = (a ⊓ b) ≡ a
 
+  -- ⟦определительное⟧
   ≤-refl : ∀ a → a ≤ᴳ a
   ≤-refl a = ⊓-idem a
 
@@ -73,22 +78,24 @@ module Core (L : MeetSemilattice) where
     wit  : Nat → G → Premise
     used : Nat → Premise
 
+  -- ⟦определение⟧
   grade-of : Premise → G
   grade-of (wit _ g) = g
   grade-of (used _)  = ⊥ᴳ
 
   -- Прогон: свёртка встречей. Пустое даёт ⊥ — см. поправку в шапке.
+  -- ⟦определение⟧
   run : List Premise → G
   run []       = ⊥ᴳ
   run (p ∷ ps) = grade-of p ⊓ run ps
 
   -- ── 1. ВЫВОД НЕ ВЫШЕ ЛЮБОЙ ПОСЫЛКИ ────────────────────────────────────
-  -- ⟦содержательное⟧
   -- Принадлежность — конструктивно, чтобы «любой» было проверяемым, а не словом.
   data _∈_ : Premise → List Premise → Set where
     here  : ∀ {p ps}   → p ∈ (p ∷ ps)
     there : ∀ {p q ps} → p ∈ ps → p ∈ (q ∷ ps)
 
+  -- ⟦определительное⟧
   ⊓-lower-l : ∀ a b → (a ⊓ b) ≤ᴳ a
   ⊓-lower-l a b =
     trans (⊓-assoc a b a)
@@ -96,16 +103,19 @@ module Core (L : MeetSemilattice) where
         (trans (sym (⊓-assoc a a b))
                (cong (λ z → z ⊓ b) (⊓-idem a))))
 
+  -- ⟦определительное⟧
   ⊓-lower-r : ∀ a b → (a ⊓ b) ≤ᴳ b
   ⊓-lower-r a b =
     trans (⊓-assoc a b b) (cong (λ z → a ⊓ z) (⊓-idem b))
 
+  -- ⟦определительное⟧
   ≤-trans : ∀ a b c → a ≤ᴳ b → b ≤ᴳ c → a ≤ᴳ c
   ≤-trans a b c ab bc =
     trans (cong (λ z → z ⊓ c) (sym ab))
       (trans (⊓-assoc a b c)
         (trans (cong (λ z → a ⊓ z) bc) ab))
 
+  -- ⟦содержательное⟧
   run-below-member : ∀ {p ps} → p ∈ ps → run ps ≤ᴳ grade-of p
   run-below-member {p} {p ∷ ps} here = ⊓-lower-l (grade-of p) (run ps)
   run-below-member {p} {q ∷ ps} (there mem) =
@@ -114,7 +124,7 @@ module Core (L : MeetSemilattice) where
             (run-below-member mem)
 
   -- ── 2. ВОЗВРАТ НЕ ПОДНИМАЕТ ВЫВОД ─────────────────────────────────────
-  -- ⟦содержательное⟧
+  -- ⟦определение⟧
   _++_ : List Premise → List Premise → List Premise
   []       ++ ys = ys
   (x ∷ xs) ++ ys = x ∷ (xs ++ ys)
@@ -128,17 +138,19 @@ module Core (L : MeetSemilattice) where
   -- Сколько бы нового ни пришло, вывод продолжения не выше того, что дала любая посылка
   -- из прежней части. Именно это демонстрация показывает делом: прежний fold
   -- воспроизводится, а не растворяется в новых свидетельствах.
+  -- ⟦определительное⟧
   ∈-++ : ∀ {p} ps qs → p ∈ ps → p ∈ (ps ++ qs)
   ∈-++ (x ∷ ps) qs here        = here
   ∈-++ (x ∷ ps) qs (there mem) = there (∈-++ ps qs mem)
 
+  -- ⟦содержательное⟧
   no-gain-on-return : ∀ {p} ps qs → p ∈ ps → run (ps ++ qs) ≤ᴳ grade-of p
   no-gain-on-return ps qs mem = run-below-member (∈-++ ps qs mem)
 
   -- ── 3. ВОСПРОИЗВОДИМОСТЬ ──────────────────────────────────────────────
-  -- ⟦определительное⟧
   -- Тривиально как утверждение о функции — и нетривиально как РЕШЕНИЕ: именно
   -- поэтому субъект хранит посылки, а не итог. Хранили бы итог — сверять было бы
   -- не с чем, пришлось бы верить записи на слово.
+  -- ⟦определительное⟧
   replay-deterministic : ∀ ps → run ps ≡ run ps
   replay-deterministic ps = refl

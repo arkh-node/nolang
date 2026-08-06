@@ -539,16 +539,40 @@ Until 05.08.2026 the line above read *"Five modules, 51 theorems"*. There are no
 and `formal/count.sh` — the project's own counter — reports something the prose did not:
 
 ```
-CONTENTFUL (passed the second gate):  10
-DEFINITIONAL (rungs, not proofs):      5
-UNMARKED:                            221   ← "a debt, not a result"
+CONTENTFUL (about the subject matter):  57
+DEFINITIONAL (rungs, not theorems):     83
+DEFINITIONS (nothing to mark):          96
+UNMARKED:                                0
+sum of kinds + debt = 236 = number of signatures ✓
 ```
 
-236 module-level statements typecheck under `--safe`. How many of them are *theorems worth
-naming* is a separate question, and it is **open**: 221 are not yet sorted into definitions
-versus proofs. The battery says this out loud on every run; the README did not. This is the
-**second** time a theorem count here was inflated — the first (a broken regex) is recorded below
-under withdrawn statements.
+236 module-level statements typecheck under `--safe`. **As of 06.08.2026 every one of them
+carries a verdict** — the debt that stood at 221 is closed.
+
+🔴 **Read the jump from 10 to 57 correctly: not one new proof was written.** The work was
+*sorting*, not proving. Three things came out of it, and two are unflattering:
+
+- **The old count was inflated by double counting.** The counter was a `grep` for markers, so an
+  explanatory comment that itself begins with a marker — `-- ⟦contentful⟧ THEOREM 1 (…)` — was
+  counted alongside the real annotation above the signature. Five theorems read as ten. It now
+  counts by *binding*: a verdict counts only when a signature stands directly beneath it, and the
+  sum of kinds must equal the number of signatures or the counter fails loudly.
+- **Some marks were attached to the wrong thing.** In `ReEntry` a `⟦contentful⟧` sat above a
+  *section heading*, and the first signature under it was the definition `_++_` — so the verdict
+  landed on a definition while the section's actual theorem had none. A marker not bound to a
+  statement still counts, and still means nothing.
+- **The debt itself was overstated.** Definitions (`run : List Premise → G`) can be neither
+  contentful nor definitional; they are simply definitions. While they sat in the denominator the
+  number claimed "221 unexamined theorems", where the real figure was under half that.
+
+⚠️ **And the boundary is a judgement, not an algorithm.** Under Curry–Howard a type *is* a
+proposition, so "definition versus theorem" has no formal criterion in Agda — it is about what we
+meant to say. A heuristic (`formal/classify.py`) proposes; the author decides by reading; the
+verdict is written directly above the statement so any reader can disagree with a specific line
+rather than with a number. That, not an algorithm, is what keeps the denominator honest.
+
+This is the **third** time a count here was wrong — the first two are recorded below under
+withdrawn statements.
 
 🔴 **And the counter itself was measuring short.** On 06.08.2026 the two counters of the same
 quantity were found to disagree: the test runner reported 236 module-level statements, while

@@ -64,33 +64,41 @@ open import Preservation using (MeetSemilattice)
 
 data Empty : Set where
 
+-- ⟦определение⟧
 ¬_ : Set → Set
 ¬ A = A → Empty
 
+-- ⟦определительное⟧
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
 
+-- ⟦определительное⟧
 trans : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
 trans refl refl = refl
 
+-- ⟦определительное⟧
 cong : ∀ {A B : Set} (f : A → B) {x y : A} → x ≡ y → f x ≡ f y
 cong f refl = refl
 
+-- ⟦определение⟧
 _==ᴺ_ : Nat → Nat → Bool
 zero  ==ᴺ zero  = true
 zero  ==ᴺ suc _ = false
 suc _ ==ᴺ zero  = false
 suc m ==ᴺ suc n = m ==ᴺ n
 
+-- ⟦определение⟧
 _or_ : Bool → Bool → Bool
 true  or _ = true
 false or b = b
 
+-- ⟦определение⟧
 _and_ : Bool → Bool → Bool
 true  and b = b
 false and _ = false
 
 -- без `with`: иначе определения не редуцируются под абстрактным скрутинем
+-- ⟦определение⟧
 ifB : ∀ {A : Set} → Bool → A → A → A
 ifB true  t f = t
 ifB false t f = f
@@ -99,21 +107,26 @@ ifB false t f = f
 -- 1. Корни, отзыв, осиротение — общее для любой решётки
 -- ------------------------------------------------------------
 
+-- ⟦определение⟧
 Root : Set
 Root = Nat
 
+-- ⟦определение⟧
 Support : Set
 Support = List Root
 
 -- множество отозванных корней (то же `Dead`, что в Preservation)
+-- ⟦определение⟧
 Dead : Set
 Dead = List Root
 
+-- ⟦определение⟧
 _∈?_ : Root → List Root → Bool
 r ∈? []       = false
 r ∈? (s ∷ ss) = (r ==ᴺ s) or (r ∈? ss)
 
 -- «ни один корень не пережил отзыв»
+-- ⟦определение⟧
 noneAlive : Dead → Support → Bool
 noneAlive d []       = true
 noneAlive d (r ∷ rs) = (r ∈? d) and noneAlive d rs
@@ -124,6 +137,7 @@ data Status : Set where
   live         : Status  -- основание живо, право есть
   orphaned     : Status  -- корни отозваны, действие обратимо → сворачиваем
   irreparable  : Status  -- корни отозваны, а действие уже совершено и необратимо
+  -- ⟦определение⟧
   unauthorized : Status  -- 🔴 ЧЕТВЁРТЫЙ (Тарантога, 29.07): основание ЦЕЛО, вера прежняя,
                          -- а разрешение отозвано. Это НЕ осиротение: там рухнул ФАКТ,
                          -- здесь — ПРАВО. Числами их не различить, поэтому различие
@@ -134,12 +148,15 @@ data Status : Set where
 -- Отсутствие ссылки (`nothing`) — законное состояние: у контура есть необратимые
 -- действия без человека в цепочке. Обязательность решается КЛАССОМ действия, не типом.
 data Perm : Set where
+  -- ⟦определение⟧
   none : Perm            -- разрешение не требовалось и не давалось
   by   : Nat → Perm      -- действие ссылается на разрешение с этим идентификатором
 
+-- ⟦определение⟧
 Revoked : Set
 Revoked = List Nat       -- отозванные разрешения
 
+-- ⟦определение⟧
 permAlive : Revoked → Perm → Bool
 permAlive rv none   = true
 permAlive rv (by i) = notB (i ∈? rv)
@@ -155,12 +172,15 @@ module WithLattice (L : MeetSemilattice) where
   open MeetSemilattice L
 
   -- порядок, порождённый решёткой: a ⊑ b ⟺ a ⊓ b ≡ a
+  -- ⟦определение⟧
   _⊑_ : G → G → Set
   a ⊑ b = (a ⊓ b) ≡ a
 
+  -- ⟦определительное⟧
   ⊑-refl : ∀ a → a ⊑ a
   ⊑-refl a = ⊓-idem a
 
+  -- ⟦определительное⟧
   ⊑-trans : ∀ a b c → a ⊑ b → b ⊑ c → a ⊑ c
   ⊑-trans a b c ab bc =
     trans (sym (cong (λ z → z ⊓ c) ab))
@@ -190,6 +210,7 @@ module WithLattice (L : MeetSemilattice) where
   -- действие: если основание стало выше по решётке, требование тем более
   -- выполнено. (Обратное неверно и не должно быть верным.)
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   strengthen : ∀ (b b′ : G) (a : Action)
              → b ⊑ b′ → Typed b a → Typed b′ a
   strengthen b b′ a bb′ (typed r⊑b) = typed (⊑-trans (req a) b b′ r⊑b bb′)
@@ -202,11 +223,13 @@ module WithLattice (L : MeetSemilattice) where
   --    требованием выше дна на таком основании НЕПРЕДСТАВИМО — не «поймано
   --    гейтом», а не существует как типизированная программа.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   bottom-blocks : ∀ (a : Action) → Typed ⊥ᴳ a → req a ≡ ⊥ᴳ
   bottom-blocks a (typed r⊑⊥) =
     trans (sym r⊑⊥) (trans (⊓-comm (req a) ⊥ᴳ) (⊥-absorb (req a)))
 
   -- прямое следствие, ради которого всё писалось
+  -- ⟦содержательное⟧
   no-irreversible-on-bottom : ∀ (a : Action)
                             → ¬ (req a ≡ ⊥ᴳ)
                             → ¬ (Typed ⊥ᴳ a)
@@ -219,6 +242,7 @@ module WithLattice (L : MeetSemilattice) where
   -- 🔴 ПОРЯДОК ИСХОДОВ НЕ ПРОИЗВОЛЕН: осиротение старше неправомерности.
   -- Если основание рухнуло, спорить о праве не о чем — действие уже без опоры.
   -- Обратное неверно: право может пасть при целом основании, и это отдельный случай.
+  -- ⟦определение⟧
   status : Dead → Revoked → Action → Status
   status d rv a =
     ifB (noneAlive d (supp a))
@@ -227,6 +251,7 @@ module WithLattice (L : MeetSemilattice) where
 
   -- ТЕОРЕМА 4 (orphan-on-retract): когда ни один корень не пережил отзыв,
   -- действие осиротело — и статус зависит от того, было ли оно необратимым.
+  -- ⟦содержательное⟧
   orphan-on-retract : ∀ (d : Dead) (rv : Revoked) (a : Action)
                     → noneAlive d (supp a) ≡ true
                     → irreversible a ≡ false
@@ -234,6 +259,7 @@ module WithLattice (L : MeetSemilattice) where
   orphan-on-retract d rv a nA rev
     rewrite nA | rev = refl
 
+  -- ⟦содержательное⟧
   irreparable-on-retract : ∀ (d : Dead) (rv : Revoked) (a : Action)
                          → noneAlive d (supp a) ≡ true
                          → irreversible a ≡ true
@@ -263,6 +289,7 @@ module WithLattice (L : MeetSemilattice) where
   -- разбором статуса: разбор `with` здесь только запутал бы доказательство,
   -- а сила утверждения та же — осиротевшее необратимое остаётся непоправимым
   -- при ЛЮБОМ расширении множества отзывов.
+  -- ⟦содержательное⟧
   no-resurrection : ∀ (d d′ : Dead) (rv : Revoked) (a : Action)
                   → (∀ i → (i ∈? d) ≡ true → (i ∈? d′) ≡ true)
                   → noneAlive d (supp a) ≡ true
@@ -272,6 +299,7 @@ module WithLattice (L : MeetSemilattice) where
     irreparable-on-retract d′ rv a (none-mono d d′ (supp a) h nA) rev
 
   -- та же монотонность для обратимого действия: осиротело — значит осиротело
+  -- ⟦содержательное⟧
   orphan-stays : ∀ (d d′ : Dead) (rv : Revoked) (a : Action)
                → (∀ i → (i ∈? d) ≡ true → (i ∈? d′) ≡ true)
                → noneAlive d (supp a) ≡ true
@@ -286,6 +314,7 @@ module WithLattice (L : MeetSemilattice) where
 
   -- ТЕОРЕМА 7 (unauthorized-on-revoke). Основание цело, разрешение отозвано →
   -- действие неправомерно. Не осиротело: корни живы, вера не тронута.
+  -- ⟦содержательное⟧
   unauthorized-on-revoke : ∀ (d : Dead) (rv : Revoked) (a : Action)
                          → noneAlive d (supp a) ≡ false
                          → permAlive rv (perm a) ≡ false
@@ -297,12 +326,14 @@ module WithLattice (L : MeetSemilattice) where
   -- того, что `Typed` не упоминает `Revoked` вовсе — и именно эта немота есть
   -- содержание теоремы, а не её слабость: право не может ни поднять, ни уронить
   -- степень основания. (Он спрашивал: следствие это или моё решение. Следствие.)
+  -- ⟦содержательное⟧
   revoke-keeps-typing : ∀ (b : G) (rv rv′ : Revoked) (a : Action)
                       → Typed b a → Typed b a
   revoke-keeps-typing b rv rv′ a t = t
 
   -- ТЕОРЕМА 9 (perm-blind-grade). И обратное: требование к степени ничего не
   -- говорит о праве. Действие с любым `req` может оказаться неправомерным.
+  -- ⟦содержательное⟧
   perm-blind-grade : ∀ (d : Dead) (rv : Revoked) (a : Action)
                    → noneAlive d (supp a) ≡ false
                    → permAlive rv (perm a) ≡ false
@@ -312,6 +343,7 @@ module WithLattice (L : MeetSemilattice) where
   -- 🔴 ТЕОРЕМА 10 (orphan-outranks-unauthorized). Порядок исходов не произволен:
   -- когда основание рухнуло, спор о праве беспредметен — статус осиротения
   -- ВЫИГРЫВАЕТ у неправомерности, каким бы ни было разрешение.
+  -- ⟦содержательное⟧
   orphan-outranks : ∀ (d : Dead) (rv : Revoked) (a : Action)
                   → noneAlive d (supp a) ≡ true
                   → ¬ (status d rv a ≡ unauthorized)
@@ -322,6 +354,7 @@ module WithLattice (L : MeetSemilattice) where
 
   -- ТЕОРЕМА 11 (no-perm-never-unauthorized). Действие, не ссылавшееся на
   -- разрешение, неправомерным стать НЕ МОЖЕТ: нельзя отозвать то, чего не давали.
+  -- ⟦содержательное⟧
   no-perm-never-unauthorized : ∀ (d : Dead) (rv : Revoked) (a : Action)
                              → perm a ≡ none
                              → ¬ (status d rv a ≡ unauthorized)
@@ -338,21 +371,27 @@ module WithLattice (L : MeetSemilattice) where
   -- «осиротело» — потеря основания; «непоправимо» — то и другое разом при
   -- уже совершённом необратимом. Свести их в одно «нет» — отмывание.
   -- ----------------------------------------------------------
+  -- ⟦определительное⟧
   live≢orphaned : ¬ (live ≡ orphaned)
   live≢orphaned ()
 
+  -- ⟦определительное⟧
   orphaned≢irreparable : ¬ (orphaned ≡ irreparable)
   orphaned≢irreparable ()
 
+  -- ⟦определительное⟧
   live≢irreparable : ¬ (live ≡ irreparable)
   live≢irreparable ()
 
   -- 🔴 и четвёртый — попарно отличён от всех трёх (просьба Тарантоги §6.1)
+  -- ⟦определительное⟧
   live≢unauthorized : ¬ (live ≡ unauthorized)
   live≢unauthorized ()
 
+  -- ⟦определительное⟧
   orphaned≢unauthorized : ¬ (orphaned ≡ unauthorized)
   orphaned≢unauthorized ()
 
+  -- ⟦определительное⟧
   irreparable≢unauthorized : ¬ (irreparable ≡ unauthorized)
   irreparable≢unauthorized ()

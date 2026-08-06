@@ -60,42 +60,53 @@ open import Agda.Builtin.List using (List; []; _∷_)
 -- 0. Вспомогательное (то же, что в Preservation — файлы самодостаточны)
 -- ------------------------------------------------------------
 
+-- ⟦определительное⟧
 cong : ∀ {A B : Set} (f : A → B) {x y : A} → x ≡ y → f x ≡ f y
 cong f refl = refl
 
+-- ⟦определительное⟧
 cong₂ : ∀ {A B C : Set} (f : A → B → C) {x y : A} {u v : B}
       → x ≡ y → u ≡ v → f x u ≡ f y v
 cong₂ f refl refl = refl
 
+-- ⟦определительное⟧
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
 
+-- ⟦определительное⟧
 trans : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
 trans refl refl = refl
 
+-- ⟦определение⟧
 _==ᴺ_ : Nat → Nat → Bool
 zero  ==ᴺ zero  = true
 zero  ==ᴺ suc _ = false
 suc _ ==ᴺ zero  = false
 suc m ==ᴺ suc n = m ==ᴺ n
 
+-- ⟦определительное⟧
 ==ᴺ-refl : ∀ n → (n ==ᴺ n) ≡ true
 ==ᴺ-refl zero    = refl
 ==ᴺ-refl (suc n) = ==ᴺ-refl n
 
+-- ⟦определение⟧
 _or_ : Bool → Bool → Bool
 true  or _ = true
 false or b = b
 
 -- порядок на весах: нужен для инварианта безопасности
 data _≤_ : Nat → Nat → Set where
+  -- ⟦определение⟧
   z≤n : ∀ {n}             → zero  ≤ n
+  -- ⟦определение⟧
   s≤s : ∀ {m n} → m ≤ n   → suc m ≤ suc n
 
+-- ⟦определительное⟧
 ≤-refl : ∀ n → n ≤ n
 ≤-refl zero    = z≤n
 ≤-refl (suc n) = s≤s (≤-refl n)
 
+-- ⟦определительное⟧
 +-mono : ∀ {a b c d} → a ≤ b → c ≤ d → (a + c) ≤ (b + d)
 +-mono z≤n       q = ≤-mono-r _ q
   where
@@ -113,20 +124,24 @@ data _≤_ : Nat → Nat → Set where
 -- 1. Корни и поддержка
 -- ------------------------------------------------------------
 
+-- ⟦определение⟧
 Root : Set
 Root = Nat
 
 -- Поддержка записывается списком, но ЧИТАЕТСЯ как множество:
 -- всё ниже зависит только от `∈?`, а не от порядка и повторов.
+-- ⟦определение⟧
 Support : Set
 Support = List Root
 
+-- ⟦определение⟧
 _∈?_ : Root → Support → Bool
 r ∈? []       = false
 r ∈? (s ∷ ss) = (r ==ᴺ s) or (r ∈? ss)
 
 -- объединение: та самая идемпотентная операция, на которой обязана жить
 -- поддержка (в отличие от ⊕ из BeliefMass, где вера накапливается)
+-- ⟦определение⟧
 _∪_ : Support → Support → Support
 []       ∪ t = t
 (r ∷ ss) ∪ t = r ∷ (ss ∪ t)
@@ -137,16 +152,19 @@ infixr 5 _∪_
 -- 2. Членство в объединении
 -- ------------------------------------------------------------
 
+-- ⟦определительное⟧
 ∈-∪ : ∀ (r : Root) (s t : Support) → (r ∈? (s ∪ t)) ≡ ((r ∈? s) or (r ∈? t))
 ∈-∪ r []       t = refl
 ∈-∪ r (x ∷ ss) t with r ==ᴺ x
 ... | true  = refl
 ... | false = ∈-∪ r ss t
 
+-- ⟦определительное⟧
 or-idem : ∀ (b : Bool) → (b or b) ≡ b
 or-idem true  = refl
 or-idem false = refl
 
+-- ⟦определительное⟧
 or-comm : ∀ (a b : Bool) → (a or b) ≡ (b or a)
 or-comm true  true  = refl
 or-comm true  false = refl
@@ -154,9 +172,11 @@ or-comm false true  = refl
 or-comm false false = refl
 
 -- 🔴 членство в S ∪ S совпадает с членством в S: повтор не добавляет ничего
+-- ⟦определительное⟧
 ∈-∪-idem : ∀ (r : Root) (s : Support) → (r ∈? (s ∪ s)) ≡ (r ∈? s)
 ∈-∪-idem r s = trans (∈-∪ r s s) (or-idem (r ∈? s))
 
+-- ⟦определительное⟧
 ∈-∪-comm : ∀ (r : Root) (s t : Support) → (r ∈? (s ∪ t)) ≡ (r ∈? (t ∪ s))
 ∈-∪-comm r s t = trans (∈-∪ r s t) (trans (or-comm (r ∈? s) (r ∈? t)) (sym (∈-∪ r t s)))
 
@@ -173,21 +193,25 @@ record E : Set where
 
 open E
 
+-- ⟦определение⟧
 _⊕_ : E → E → E
 x ⊕ y = ev (w⁺ x + w⁺ y) (w⁻ x + w⁻ y)
 
+-- ⟦определение⟧
 silence : E
 silence = ev 0 0
 
 -- вклад одного корня (какой именно — дело программы, здесь это параметр)
 module WithWeights (weight : Root → E) where
 
+  -- ⟦определение⟧
   pick : Bool → E → E
   pick true  e = e
   pick false _ = silence
 
   -- сумма вкладов корней из диапазона [0 .. n), присутствующих в поддержке.
   -- Ключ: смотрим на ЧЛЕНСТВО, поэтому порядок и повторы записи не влияют.
+  -- ⟦определение⟧
   massUpTo : Nat → Support → E
   massUpTo zero    s = silence
   massUpTo (suc n) s = pick (n ∈? s) (weight n) ⊕ massUpTo n s
@@ -195,6 +219,7 @@ module WithWeights (weight : Root → E) where
   -- ----------------------------------------------------------
   -- ТЕОРЕМА 1. Масса зависит ТОЛЬКО от членства
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   mass-resp-∈ : ∀ (n : Nat) (s t : Support)
               → (∀ r → (r ∈? s) ≡ (r ∈? t))
               → massUpTo n s ≡ massUpTo n t
@@ -207,12 +232,14 @@ module WithWeights (weight : Root → E) where
   --    Это и есть структурная защита от двойного счёта предка:
   --    её нельзя забыть применить, она в носителе.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   ∪-idem : ∀ (n : Nat) (s : Support) → massUpTo n (s ∪ s) ≡ massUpTo n s
   ∪-idem n s = mass-resp-∈ n (s ∪ s) s (λ r → ∈-∪-idem r s)
 
   -- ----------------------------------------------------------
   -- ТЕОРЕМА 3 (∪-comm). Порядок посылок не влияет на веру.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   ∪-comm : ∀ (n : Nat) (s t : Support) → massUpTo n (s ∪ t) ≡ massUpTo n (t ∪ s)
   ∪-comm n s t = mass-resp-∈ n (s ∪ t) (t ∪ s) (λ r → ∈-∪-comm r s t)
 
@@ -224,12 +251,15 @@ module WithWeights (weight : Root → E) where
   --    Значит массы РАВНЫ: занижения 0.540 против 0.675 не возникает
   --    по построению носителя, а не потому, что кто-то проверил.
   -- ----------------------------------------------------------
+  -- ⟦определение⟧
   derived : Support → Support → Support
   derived sa sb = sa ∪ sb
 
+  -- ⟦определение⟧
   direct : Support → Support → Support
   direct sw1 sw2 = sw1 ∪ sw2
 
+  -- ⟦содержательное⟧
   derived≡direct : ∀ (n : Nat) (sa sb : Support)
                  → massUpTo n (derived sa sb) ≡ massUpTo n (direct sa sb)
   derived≡direct n sa sb = refl
@@ -241,6 +271,7 @@ module WithWeights (weight : Root → E) where
   --    входит РОВНО ОДИН раз. Наивная починка «вывод сам себе корень»
   --    сложила бы предка дважды; здесь это невозможно.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   shared-root-once : ∀ (n : Nat) (s : Support)
                    → massUpTo n (derived s s) ≡ massUpTo n s
   shared-root-once n s = ∪-idem n s
@@ -251,6 +282,7 @@ module WithWeights (weight : Root → E) where
   --    не падает. «Через выводы вера не выше» — частный случай при
   --    равенстве членства (теорема 4).
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   mono-∈ : ∀ (n : Nat) (s t : Support)
          → (∀ r → (r ∈? s) ≡ true → (r ∈? t) ≡ true)
          → w⁺ (massUpTo n s) ≤ w⁺ (massUpTo n t)

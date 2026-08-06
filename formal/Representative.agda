@@ -68,66 +68,82 @@ open import Agda.Builtin.Bool using (Bool; true; false)
 
 data Empty : Set where
 
+-- ⟦определение⟧
 ¬_ : Set → Set
 ¬ A = A → Empty
 
+-- ⟦определительное⟧
 cong : ∀ {A B : Set} (f : A → B) {x y : A} → x ≡ y → f x ≡ f y
 cong f refl = refl
 
 data _≤_ : Nat → Nat → Set where
+  -- ⟦определение⟧
   z≤n : ∀ {n}           → zero  ≤ n
+  -- ⟦определение⟧
   s≤s : ∀ {m n} → m ≤ n → suc m ≤ suc n
 
+-- ⟦определительное⟧
 ≤-refl : ∀ n → n ≤ n
 ≤-refl zero    = z≤n
 ≤-refl (suc n) = s≤s (≤-refl n)
 
+-- ⟦определительное⟧
 ≤-step : ∀ {m n} → m ≤ n → m ≤ suc n
 ≤-step z≤n     = z≤n
 ≤-step (s≤s p) = s≤s (≤-step p)
 
+-- ⟦определительное⟧
 ≤-trans : ∀ {a b c} → a ≤ b → b ≤ c → a ≤ c
 ≤-trans z≤n     _       = z≤n
 ≤-trans (s≤s p) (s≤s q) = s≤s (≤-trans p q)
 
 -- сложение не уменьшает: a ≤ a + b
+-- ⟦определительное⟧
 ≤-plusʳ : ∀ a b → a ≤ (a + b)
 ≤-plusʳ zero    b = z≤n
 ≤-plusʳ (suc a) b = s≤s (≤-plusʳ a b)
 
+-- ⟦определительное⟧
 ≤-plusˡ : ∀ a b → a ≤ (b + a)
 ≤-plusˡ a zero    = ≤-refl a
 ≤-plusˡ a (suc b) = ≤-step (≤-plusˡ a b)
 
+-- ⟦определение⟧
 _<?_ : Nat → Nat → Bool
 zero  <? zero  = false
 zero  <? suc _ = true
 suc _ <? zero  = false
 suc m <? suc n = m <? n
 
+-- ⟦определение⟧
 ifN : Bool → Nat → Nat → Nat
 ifN true  t f = t
 ifN false t f = f
 
+-- ⟦определение⟧
 max : Nat → Nat → Nat
 max zero    n       = n
 max (suc m) zero    = suc m
 max (suc m) (suc n) = suc (max m n)
 
+-- ⟦определительное⟧
 max-idem : ∀ n → max n n ≡ n
 max-idem zero    = refl
 max-idem (suc n) = cong suc (max-idem n)
 
+-- ⟦определительное⟧
 max-≤ʳ : ∀ m n → n ≤ max m n
 max-≤ʳ zero    n       = ≤-refl n
 max-≤ʳ (suc m) zero    = z≤n
 max-≤ʳ (suc m) (suc n) = s≤s (max-≤ʳ m n)
 
+-- ⟦определительное⟧
 max-≤ˡ : ∀ m n → m ≤ max m n
 max-≤ˡ zero    n       = z≤n
 max-≤ˡ (suc m) zero    = ≤-refl (suc m)
 max-≤ˡ (suc m) (suc n) = s≤s (max-≤ˡ m n)
 
+-- ⟦определительное⟧
 max-lub : ∀ {m n b} → m ≤ b → n ≤ b → max m n ≤ b
 max-lub {zero}  {n}     p q = q
 max-lub {suc m} {zero}  p q = p
@@ -148,6 +164,7 @@ open E
 
 -- Группа копий ОДНОГО корня. Не путать с независимыми свидетелями:
 -- у них разные корни, и они складываются через ⊕ (BeliefMass).
+-- ⟦определение⟧
 Copies : Set
 Copies = List E
 
@@ -156,25 +173,30 @@ Copies = List E
 -- ------------------------------------------------------------
 
 -- полный вес свидетельства: сколько испытаний за ним стоит, чем бы они ни кончились
+-- ⟦определение⟧
 wt : E → Nat
 wt x = w⁺ x + w⁻ x
 
 -- (а) НАБЛЮДАТЕЛЬНЕЙШАЯ копия — как в реализации (`src/reduce.lisp:227-229`):
 --     сравниваем по полному весу, берём вклад «за» у победителя.
 --     Здесь модель сведена с кодом; расхождение 30.07 было ошибкой модели.
+-- ⟦определение⟧
 repAt : Nat → Nat → Copies → Nat     -- (лучший полный вес, его вклад «за», остаток)
 repAt best acc []       = acc
 repAt best acc (x ∷ xs) = ifN (best <? wt x) (repAt (wt x) (w⁺ x) xs) (repAt best acc xs)
 
+-- ⟦определение⟧
 rep : Copies → Nat
 rep xs = repAt 0 0 xs
 
 -- (б) СУММА — «копии складываются», то есть повтор считается подтверждением
+-- ⟦определение⟧
 sum⁺ : Copies → Nat
 sum⁺ []       = 0
 sum⁺ (x ∷ xs) = w⁺ x + sum⁺ xs
 
 -- (в) СЛАБЕЙШАЯ копия (для полноты разбора)
+-- ⟦определение⟧
 minrep : Copies → Nat
 minrep []           = 0
 minrep (x ∷ [])     = w⁺ x
@@ -190,15 +212,18 @@ minrep (x ∷ y ∷ xs) = mn (w⁺ x) (minrep (y ∷ xs))
 -- ------------------------------------------------------------
 
 -- вспомогательное для оценок
+-- ⟦определительное⟧
 ≤-plus-mono : ∀ {x y} (a : Nat) → x ≤ y → x ≤ (a + y)
 ≤-plus-mono zero    p = p
 ≤-plus-mono (suc a) p = ≤-step (≤-plus-mono a p)
 
+-- ⟦определительное⟧
 +-monoʳ : ∀ (a : Nat) {x y} → x ≤ y → (a + x) ≤ (a + y)
 +-monoʳ zero    p = p
 +-monoʳ (suc a) p = s≤s (+-monoʳ a p)
 
 -- ТЕОРЕМА 1 (rep-single). Группа из одной копии есть сама копия.
+-- ⟦содержательное⟧
 rep-single : ∀ (x : E) → rep (x ∷ []) ≡ w⁺ x
 rep-single x = help (w⁺ x) (w⁻ x)
   where
@@ -211,6 +236,7 @@ rep-single x = help (w⁺ x) (w⁻ x)
 --    свидетельств были независимы. Это и есть запрет вознаграждения за размножение:
 --    сколько копий одного корня ни принеси, больше суммы независимых голосов не выйдет.
 private
+  -- ⟦определительное⟧
   bounded-acc : ∀ (b a : Nat) (ys : Copies) → repAt b a ys ≤ (a + sum⁺ ys)
   bounded-acc b a []       = ≤-plusʳ a 0
   bounded-acc b a (y ∷ ys) = branch (b <? wt y)
@@ -220,12 +246,14 @@ private
       branch true  = ≤-plus-mono a (bounded-acc (wt y) (w⁺ y) ys)
       branch false = ≤-trans (bounded-acc b a ys) (+-monoʳ a (≤-plus-mono (w⁺ y) (≤-refl (sum⁺ ys))))
 
+-- ⟦содержательное⟧
 rep-bounded : ∀ (xs : Copies) → rep xs ≤ sum⁺ xs
 rep-bounded xs = bounded-acc 0 0 xs
 
 -- 🔴 ТЕОРЕМА 3 (rep-idem). ТОЧНАЯ копия не добавляет ничего: повтор одного и того же
 --    свидетельства не есть подтверждение. Здесь `rep` расходится с `⊕` из BeliefMass,
 --    и это расхождение — несущее: вера независимых накапливается, копии одного — нет.
+-- ⟦содержательное⟧
 rep-idem : ∀ (x : E) → rep (x ∷ x ∷ []) ≡ rep (x ∷ [])
 rep-idem x = help (w⁺ x) (w⁻ x)
   where
@@ -252,11 +280,13 @@ rep-idem x = help (w⁺ x) (w⁻ x)
 private
   one  : E
   one  = ev 1 0
+  -- ⟦определение⟧
   worse : E                  -- наблюдательнее (полный вес 6 против 1), но хуже: 1 за, 5 против
   worse = ev 1 5
 
 -- 🔴 СУММА нарушает идемпотентность: две копии одного свидетеля дали бы вдвое больше веры.
 --    Это и есть «повтор как подтверждение» — то, против чего заведён язык.
+-- ⟦содержательное⟧
 sum-not-idem : ¬ (sum⁺ (one ∷ one ∷ []) ≡ sum⁺ (one ∷ []))
 sum-not-idem ()
 
@@ -265,6 +295,7 @@ sum-not-idem ()
 --    `rep [one] = 1`, `rep [one, worse] = 1` по вкладу «за», но представителем становится
 --    свидетельство с пятью голосами против — и вера, считаемая по нему, падает.
 --    Формально здесь: представитель СМЕНИЛСЯ, потому что worse наблюдательнее.
+-- ⟦содержательное⟧
 worse-copy-takes-over : rep (one ∷ worse ∷ []) ≡ w⁺ worse
 worse-copy-takes-over = refl
 

@@ -59,18 +59,23 @@ open import Agda.Builtin.List using (List; []; _∷_)
 -- 0. Вспомогательное
 -- ------------------------------------------------------------
 
+-- ⟦определительное⟧
 cong : ∀ {A B : Set} (f : A → B) {x y : A} → x ≡ y → f x ≡ f y
 cong f refl = refl
 
+-- ⟦определительное⟧
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
 
+-- ⟦определительное⟧
 trans : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
 trans refl refl = refl
 
+-- ⟦определительное⟧
 subst : ∀ {A : Set} (P : A → Set) {x y : A} → x ≡ y → P x → P y
 subst P refl px = px
 
+-- ⟦определение⟧
 _==ᴺ_ : Nat → Nat → Bool
 zero  ==ᴺ zero  = true
 zero  ==ᴺ suc _ = false
@@ -95,6 +100,7 @@ record MeetSemilattice : Set₁ where
 module Core (L : MeetSemilattice) where
   open MeetSemilattice L
 
+  -- ⟦определение⟧
   Id : Set
   Id = Nat
 
@@ -103,32 +109,39 @@ module Core (L : MeetSemilattice) where
     wit : Id → G → Premise
     sil : Id → Premise
 
+  -- ⟦определение⟧
   pid : Premise → Id
   pid (wit i _) = i
   pid (sil i)   = i
 
+  -- ⟦определение⟧
   grade-of : Premise → G
   grade-of (wit _ g) = g
   grade-of (sil _)   = ⊥ᴳ            -- «традиция молчит, следовательно…» → ⊥
 
   -- Множество отозванных свидетелей D
+  -- ⟦определение⟧
   Dead : Set
   Dead = List Id
 
   -- без `with`: иначе определения не редуцируются под абстрактным скрутинем,
   -- и лемма live-sub (§10) не проходит
+  -- ⟦определение⟧
   _or_ : Bool → Bool → Bool
   true  or _ = true
   false or b = b
 
+  -- ⟦определение⟧
   ifL : Bool → List Premise → List Premise → List Premise
   ifL true  t f = t
   ifL false t f = f
 
+  -- ⟦определение⟧
   _∈?_ : Id → Dead → Bool
   i ∈? []       = false
   i ∈? (j ∷ js) = (i ==ᴺ j) or (i ∈? js)
 
+  -- ⟦определение⟧
   live : Dead → List Premise → List Premise
   live d []       = []
   live d (p ∷ ps) = ifL (pid p ∈? d) (live d ps) (p ∷ live d ps)
@@ -139,6 +152,7 @@ module Core (L : MeetSemilattice) where
 
   -- (а) ПРОВЕРЯЮЩИЙ. Как в ТИПЫ_v0 §3, T-CLAIM: g* = ⊥ при n = 0,
   --     иначе ⨅ по посылкам. Пустая база НЕ даёт верх решётки.
+  -- ⟦определение⟧
   chkOn : List Premise → G
   chkOn []          = ⊥ᴳ
   chkOn (p ∷ [])    = grade-of p
@@ -146,17 +160,21 @@ module Core (L : MeetSemilattice) where
 
   -- (б) МАШИНА. Идёт по объявлениям и копит склад в аккумуляторе —
   --     другой алгоритм, не другая запись того же.
+  -- ⟦определение⟧
   walk⁺ : G → List Premise → G
   walk⁺ acc []         = acc
   walk⁺ acc (p ∷ rest) = walk⁺ (acc ⊓ grade-of p) rest
 
+  -- ⟦определение⟧
   redOn : List Premise → G
   redOn []      = ⊥ᴳ
   redOn (p ∷ r) = walk⁺ (grade-of p) r
 
+  -- ⟦определение⟧
   chk : Dead → List Premise → G
   chk d ps = chkOn (live d ps)
 
+  -- ⟦определение⟧
   red : Dead → List Premise → G
   red d ps = redOn (live d ps)
 
@@ -183,6 +201,7 @@ module Core (L : MeetSemilattice) where
     agree (p ∷ [])    = refl
     agree (p ∷ q ∷ r) = sym (walk⁺-chk p (q ∷ r))
 
+  -- ⟦содержательное⟧
   preservation : ∀ (d : Dead) (ps : List Premise) → chk d ps ≡ red d ps
   preservation d ps = agree (live d ps)
 
@@ -190,6 +209,7 @@ module Core (L : MeetSemilattice) where
   -- 4. ТЕОРЕМА 2: пустая база даёт ⊥ («отмывание из ничего» невозможно)
   -- ----------------------------------------------------------
 
+  -- ⟦содержательное⟧
   empty-base : ∀ (d : Dead) → chk d [] ≡ ⊥ᴳ
   empty-base d = refl
 
@@ -198,6 +218,7 @@ module Core (L : MeetSemilattice) where
   --    даже рядом со свидетелями [строго]  (АЛГЕБРА_v0 §2.5)
   -- ----------------------------------------------------------
 
+  -- ⟦содержательное⟧
   silence-kills : ∀ (i : Id) (ps : List Premise)
                 → chk [] (sil i ∷ ps) ≡ ⊥ᴳ
   silence-kills i []       = refl
@@ -208,6 +229,7 @@ module Core (L : MeetSemilattice) where
   --    не меняет степени. Порядок объявлений не влияет на склад.
   -- ----------------------------------------------------------
 
+  -- ⟦содержательное⟧
   swap-inv : ∀ (p q : Premise) (r : List Premise)
            → chkOn (p ∷ q ∷ r) ≡ chkOn (q ∷ p ∷ r)
   swap-inv p q []       = ⊓-comm (grade-of p) (grade-of q)
@@ -220,18 +242,22 @@ module Core (L : MeetSemilattice) where
   -- 7. ПОРЯДОК ⊑ и его законы (выводятся из полурешётки, не постулируются)
   -- ----------------------------------------------------------
 
+  -- ⟦определение⟧
   _⊑_ : G → G → Set
   a ⊑ b = (a ⊓ b) ≡ a
 
+  -- ⟦определительное⟧
   ⊑-refl : ∀ a → a ⊑ a
   ⊑-refl a = ⊓-idem a
 
+  -- ⟦определительное⟧
   ⊑-trans : ∀ {a b c} → a ⊑ b → b ⊑ c → a ⊑ c
   ⊑-trans {a} {b} {c} p q =
     trans (cong (λ x → x ⊓ c) (sym p))
       (trans (⊓-assoc a b c)
         (trans (cong (λ x → a ⊓ x) q) p))
 
+  -- ⟦определительное⟧
   meet-lower₁ : ∀ a b → (a ⊓ b) ⊑ a
   meet-lower₁ a b =
     trans (⊓-assoc a b a)
@@ -239,9 +265,11 @@ module Core (L : MeetSemilattice) where
         (trans (sym (⊓-assoc a a b))
                (cong (λ x → x ⊓ b) (⊓-idem a))))
 
+  -- ⟦определительное⟧
   meet-lower₂ : ∀ a b → (a ⊓ b) ⊑ b
   meet-lower₂ a b = trans (⊓-assoc a b b) (cong (λ x → a ⊓ x) (⊓-idem b))
 
+  -- ⟦определительное⟧
   meet-mono-r : ∀ a {b c} → b ⊑ c → (a ⊓ b) ⊑ (a ⊓ c)
   meet-mono-r a {b} {c} q =
     trans (⊓-assoc a b (a ⊓ c))
@@ -269,19 +297,23 @@ module Core (L : MeetSemilattice) where
   data NE : List Premise → Set where
     ne : ∀ p ps → NE (p ∷ ps)
 
+  -- ⟦определительное⟧
   sub-NE : ∀ {xs ys} → Sub xs ys → NE ys → NE xs
   sub-NE (sub-keep {x} {xs} s) _ = ne x xs
   sub-NE (sub-drop {x} {xs} s) _ = ne x xs
 
   -- голова свёртки: на непустом хвосте chkOn (x ∷ xs) = grade x ⊓ chkOn xs
+  -- ⟦определительное⟧
   chk-cons : ∀ (x : Premise) {xs} → NE xs → chkOn (x ∷ xs) ≡ (grade-of x ⊓ chkOn xs)
   chk-cons x (ne p ps) = refl
 
   -- случай, когда от хвоста не осталось ничего, а голова сохранена
+  -- ⟦определительное⟧
   keep-last : ∀ (x : Premise) {xs} → chkOn (x ∷ xs) ⊑ chkOn (x ∷ [])
   keep-last x {[]}     = ⊑-refl (grade-of x)
   keep-last x {z ∷ zs} = meet-lower₁ (grade-of x) (chkOn (z ∷ zs))
 
+  -- ⟦содержательное⟧
   retract-raises : ∀ {xs ys} → Sub xs ys → NE ys → chkOn xs ⊑ chkOn ys
   retract-raises (sub-keep {x} {xs} {[]}     s) _ = keep-last x {xs}
   retract-raises (sub-keep {x} {xs} {y ∷ ys} s) _ with sub-NE s (ne y ys)
@@ -299,6 +331,7 @@ module Core (L : MeetSemilattice) where
   --    а не поднимается. Ровно граница, на которой ломается теорема 5.
   -- ----------------------------------------------------------
 
+  -- ⟦содержательное⟧
   retract-collapse : ∀ {xs} → Sub xs [] → chkOn [] ≡ ⊥ᴳ
   retract-collapse _ = refl
 
@@ -308,6 +341,7 @@ module Core (L : MeetSemilattice) where
   --     Без этой леммы теорема 5 доказана «про списки», а не «про отзыв».
   -- ----------------------------------------------------------
 
+  -- ⟦определительное⟧
   live-sub : ∀ (i : Id) (d : Dead) (ps : List Premise)
            → Sub (live d ps) (live (i ∷ d) ps)
   live-sub i d []       = sub-nil
@@ -319,6 +353,7 @@ module Core (L : MeetSemilattice) where
 
   -- Итог в терминах отзыва: пока после отзыва остаётся хоть одна живая
   -- посылка, степень утверждения не падает.
+  -- ⟦содержательное⟧
   retract-raises-live : ∀ (i : Id) (d : Dead) (ps : List Premise)
                       → NE (live (i ∷ d) ps)
                       → chk d ps ⊑ chk (i ∷ d) ps
@@ -336,17 +371,20 @@ module Core (L : MeetSemilattice) where
     perm-swap  : ∀ x y xs → Perm (x ∷ y ∷ xs) (y ∷ x ∷ xs)
     perm-trans : ∀ {xs ys zs} → Perm xs ys → Perm ys zs → Perm xs zs
 
+  -- ⟦определительное⟧
   perm-NE : ∀ {xs ys} → Perm xs ys → NE xs → NE ys
   perm-NE perm-nil ()
   perm-NE (perm-skip x {xs} {ys} p) _ = ne x ys
   perm-NE (perm-swap x y xs) _        = ne y (x ∷ xs)
   perm-NE (perm-trans p q) n          = perm-NE q (perm-NE p n)
 
+  -- ⟦определительное⟧
   perm-empty : ∀ {ys} → Perm [] ys → ys ≡ []
   perm-empty perm-nil = refl
   perm-empty (perm-trans p q) with perm-empty p
   ... | refl = perm-empty q
 
+  -- ⟦содержательное⟧
   perm-inv : ∀ {xs ys} → Perm xs ys → chkOn xs ≡ chkOn ys
   perm-inv perm-nil            = refl
   perm-inv (perm-swap x y xs)  = swap-inv x y xs

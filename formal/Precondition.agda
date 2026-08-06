@@ -40,32 +40,39 @@ open import Agda.Builtin.Equality using (_≡_; refl)
 
 data Empty : Set where
 
+-- ⟦определение⟧
 ¬_ : Set → Set
 ¬ A = A → Empty
 
 module _ (State : Set) where
 
+  -- ⟦определение⟧
   Act : Set
   Act = State → State
 
+  -- ⟦определение⟧
   Pred : Set₁
   Pred = State → Set
 
   -- «действие достигает цели»: после него цель истинна всегда
+  -- ⟦определение⟧
   Achieves : Act → Pred → Set
   Achieves f post = ∀ s → post (f s)
 
   -- «действие нужно в s»: цель ещё не достигнута
+  -- ⟦определение⟧
   Needed : Pred → State → Set
   Needed post s = ¬ (post s)
 
   -- разрешение действия в s по предусловию
+  -- ⟦определение⟧
   Allowed : Pred → State → Set
   Allowed pre s = pre s
 
   -- 🔴 ИМЕННО ЭТО отношение и есть дефект: предусловие требует того, что действие производит.
   --    У Тарантоги `pre` = «головы равны», `post` = «головы равны после пуша» — pre ⇒ post
   --    выполняется тождественно, потому что это одно и то же свойство.
+  -- ⟦определение⟧
   Demands-Its-Own-Effect : Pred → Pred → Set
   Demands-Its-Own-Effect pre post = ∀ s → pre s → post s
 
@@ -75,6 +82,7 @@ module _ (State : Set) where
   --   эффекта, ЛОЖНО — то есть действие запрещено ровно там, где оно и должно совершаться.
   --   Гипотеза `dem` потребляется: без неё из `¬ post s` ничего не следует про `pre s`.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   blocked-where-needed : ∀ (pre post : Pred)
                        → Demands-Its-Own-Effect pre post
                        → ∀ s → Needed post s → ¬ (Allowed pre s)
@@ -86,6 +94,7 @@ module _ (State : Set) where
   --   выдаётся только тогда, когда работа не нужна. Вместе с теоремой 1 это и есть
   --   «запрещает не дурное, а само действие», но с названной причиной.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   allowed-only-where-useless : ∀ (pre post : Pred)
                              → Demands-Its-Own-Effect pre post
                              → ∀ s → Allowed pre s → ¬ (Needed post s)
@@ -97,6 +106,7 @@ module _ (State : Set) where
   --   здесь не бесполезно, а неповторимо — после него условие ложно навсегда.
   --   Потребляет обе гипотезы: и достижение цели, и противоречие.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   pre-contra-post : ∀ (f : Act) (pre post : Pred)
                   → Achieves f post
                   → (∀ s → post s → ¬ (pre s))
@@ -113,6 +123,7 @@ module _ (State : Set) where
   --   У Тарантоги это и вышло: «головы равны» → «опубликованное чисто», и петля открылась
   --   по праву, а не по ослаблению.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   honest-pre-survives : ∀ (f : Act) (pre : Pred)
                       → (∀ s → pre s → pre (f s))
                       → ∀ s → Allowed pre s → Allowed pre (f s)
@@ -125,6 +136,7 @@ module _ (State : Set) where
   --   ни одна теорема прежней редакции: честность предусловия РАЗЛИЧИМА по поведению
   --   после действия, а не по намерению автора.
   -- ----------------------------------------------------------
+  -- ⟦содержательное⟧
   dishonest-pre-dies : ∀ (f : Act) (pre post : Pred)
                      → Achieves f post
                      → (∀ s → post s → ¬ (pre s))
@@ -137,6 +149,7 @@ module _ (State : Set) where
   --   развёртка и делала прежние теоремы тождественными — пусть она будет видна одна,
   --   чем незаметно сидит внутри четырёх «доказательств».
   -- ----------------------------------------------------------
+  -- ⟦определительное⟧
   allowed-is-pre : ∀ (pre : Pred) (s : State) → Allowed pre s ≡ pre s
   allowed-is-pre pre s = refl
 

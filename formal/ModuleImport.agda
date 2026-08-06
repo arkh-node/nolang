@@ -34,15 +34,19 @@ module ModuleImport where
 open import Agda.Builtin.Equality using (_≡_; refl)
 open import Agda.Builtin.List using (List; []; _∷_)
 
+-- ⟦определительное⟧
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
 
+-- ⟦определительное⟧
 trans : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
 trans refl refl = refl
 
+-- ⟦определительное⟧
 cong : ∀ {A B : Set} (f : A → B) {x y : A} → x ≡ y → f x ≡ f y
 cong f refl = refl
 
+-- ⟦определительное⟧
 cong₂ : ∀ {A B C : Set} (f : A → B → C) {x y : A} {u v : B}
       → x ≡ y → u ≡ v → f x u ≡ f y v
 cong₂ f refl refl = refl
@@ -65,6 +69,7 @@ record MeetSemilattice : Set₁ where
 module Fold (L : MeetSemilattice) where
   open MeetSemilattice L public
 
+  -- ⟦определение⟧
   meet : List G → G
   meet []          = ⊥ᴳ
   meet (x ∷ [])    = x
@@ -80,14 +85,17 @@ module Import (Src Dst : MeetSemilattice) (φ : MeetSemilattice.G Src → MeetSe
     module S = Fold Src
     module D = Fold Dst
 
+  -- ⟦определение⟧
   map : List S.G → List D.G
   map []       = []
   map (x ∷ xs) = φ x ∷ map xs
 
   -- два условия, которые объявление импорта обязано предъявить
+  -- ⟦определение⟧
   Preserves-⊓ : Set
   Preserves-⊓ = ∀ a b → φ (a S.⊓ b) ≡ (φ a D.⊓ φ b)
 
+  -- ⟦определение⟧
   Preserves-⊥ : Set
   Preserves-⊥ = φ S.⊥ᴳ ≡ D.⊥ᴳ
 
@@ -95,6 +103,7 @@ module Import (Src Dst : MeetSemilattice) (φ : MeetSemilattice.G Src → MeetSe
   -- 1. ДОСТАТОЧНОСТЬ
   -- ----------------------------------------------------------
 
+  -- ⟦содержательное⟧
   sound : Preserves-⊓ → Preserves-⊥
         → ∀ (ps : List S.G) → φ (S.meet ps) ≡ D.meet (map ps)
   sound p⊓ p⊥ []           = p⊥
@@ -107,10 +116,12 @@ module Import (Src Dst : MeetSemilattice) (φ : MeetSemilattice.G Src → MeetSe
   -- 2. НЕОБХОДИМОСТЬ — условие равносильно, а не просто достаточно
   -- ----------------------------------------------------------
 
+  -- ⟦содержательное⟧
   necessary : (∀ (ps : List S.G) → φ (S.meet ps) ≡ D.meet (map ps)) → Preserves-⊓
   necessary h a b = h (a ∷ b ∷ [])
 
   -- 3. и дно обязано сохраняться — иначе пустая база после импорта перестаёт быть ⊥
+  -- ⟦содержательное⟧
   bottom-needed : (∀ (ps : List S.G) → φ (S.meet ps) ≡ D.meet (map ps)) → Preserves-⊥
   bottom-needed h = h []
 
@@ -119,12 +130,15 @@ module Import (Src Dst : MeetSemilattice) (φ : MeetSemilattice.G Src → MeetSe
   --    (порядок задан гранью: a ⊑ b означает a ⊓ b ≡ a)
   -- ----------------------------------------------------------
 
+  -- ⟦определение⟧
   _⊑ˢ_ : S.G → S.G → Set
   a ⊑ˢ b = (a S.⊓ b) ≡ a
 
+  -- ⟦определение⟧
   _⊑ᵈ_ : D.G → D.G → Set
   a ⊑ᵈ b = (a D.⊓ b) ≡ a
 
+  -- ⟦содержательное⟧
   mono : Preserves-⊓ → ∀ {a b} → a ⊑ˢ b → φ a ⊑ᵈ φ b
   mono p⊓ {a} {b} le = trans (sym (p⊓ a b)) (cong φ le)
 
@@ -144,8 +158,10 @@ module Compose (A B C : MeetSemilattice)
     module MA = MeetSemilattice A
     module MC = MeetSemilattice C
 
+  -- ⟦определительное⟧
   compose-⊓ : AB.Preserves-⊓ → BC.Preserves-⊓ → AC.Preserves-⊓
   compose-⊓ f g a b = trans (cong ψ (f a b)) (g (φ a) (φ b))
 
+  -- ⟦определительное⟧
   compose-⊥ : AB.Preserves-⊥ → BC.Preserves-⊥ → AC.Preserves-⊥
   compose-⊥ f g = trans (cong ψ f) g

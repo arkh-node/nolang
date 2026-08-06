@@ -52,12 +52,15 @@ record MeetSemilattice : Set₁ where
 
 -- Мелкие леммы о равенстве — держим свои, чтобы не тянуть stdlib ради трёх строк
 -- (поверхность зависимостей у формальной части намеренно мала, см. formal/README.md).
+-- ⟦определительное⟧
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
 
+-- ⟦определительное⟧
 trans : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
 trans refl q = q
 
+-- ⟦определительное⟧
 cong : ∀ {A B : Set} {x y : A} (f : A → B) → x ≡ y → f x ≡ f y
 cong f refl = refl
 
@@ -66,11 +69,13 @@ module Ceiling (L : MeetSemilattice) where
 
   -- Порядок решётки: a ниже-или-равно b, когда встреча возвращает a.
   -- Это определение, а не постулат: всё дальнейшее выводится из свойств ⊓.
+  -- ⟦определение⟧
   _≤ᴳ_ : G → G → Set
   a ≤ᴳ b = (a ⊓ b) ≡ a
 
   -- Степень свидетеля после сведения с классом источника.
   -- Ровно то, что делает chk-witness: (g-meet заявленное класс).
+  -- ⟦определение⟧
   witness-grade : G → G → G
   witness-grade claimed cls = claimed ⊓ cls
 
@@ -79,6 +84,7 @@ module Ceiling (L : MeetSemilattice) where
   -- Доказательство — одна перестановка и одна идемпотентность: то, что
   -- закон держится на СВОЙСТВАХ ⊓, а не на проверке в коде, и есть причина
   -- писать это здесь, а не только в тесте.
+  -- ⟦содержательное⟧
   ceiling : ∀ claimed cls → (witness-grade claimed cls) ≤ᴳ cls
   ceiling claimed cls
     rewrite ⊓-assoc claimed cls cls
@@ -89,6 +95,7 @@ module Ceiling (L : MeetSemilattice) where
   -- Если заявлено не выше класса, результат равен заявленному.
   -- Без этого «починка» свелась бы к запрету всего: потолок обязан
   -- пропускать правду, иначе он не потолок, а глушилка.
+  -- ⟦содержательное⟧
   honest-preserved : ∀ claimed cls → claimed ≤ᴳ cls
                    → witness-grade claimed cls ≡ claimed
   honest-preserved claimed cls le = le
@@ -97,6 +104,7 @@ module Ceiling (L : MeetSemilattice) where
   -- Источник может происходить от источника. Класс наследника — встреча
   -- собственного объявления с классом предка (src/check.lisp, source-class).
   -- Цепь дана списком объявленных степеней: голова — ближайший источник.
+  -- ⟦определение⟧
   chain-class : G → List G → G
   chain-class own []            = own
   chain-class own (parent ∷ ps) = own ⊓ chain-class parent ps
@@ -108,6 +116,7 @@ module Ceiling (L : MeetSemilattice) where
   --                     ≡ (own ⊓ own) ⊓ X ≡ own ⊓ X
   -- где X — класс остатка цепи. Каждый шаг назван, чтобы читалось как довод,
   -- а не как везение с `rewrite`.
+  -- ⟦содержательное⟧
   chain-falls : ∀ own ps → (chain-class own ps) ≤ᴳ own
   chain-falls own []            = ⊓-idem own
   chain-falls own (parent ∷ ps) =
@@ -121,12 +130,14 @@ module Ceiling (L : MeetSemilattice) where
   -- предка. Значит не выше и корня: закон транзитивен по построению.
   -- Транзитивность порядка: цепочка равенств, каждый шаг назван.
   --   a ⊓ c ≡ (a ⊓ b) ⊓ c ≡ a ⊓ (b ⊓ c) ≡ a ⊓ b ≡ a
+  -- ⟦определительное⟧
   ⊓-trans : ∀ a b c → a ≤ᴳ b → b ≤ᴳ c → a ≤ᴳ c
   ⊓-trans a b c ab bc =
     trans (cong (λ z → z ⊓ c) (sym ab))
       (trans (⊓-assoc a b c)
         (trans (cong (λ z → a ⊓ z) bc) ab))
 
+  -- ⟦содержательное⟧
   chain-ceiling : ∀ claimed own ps
                 → (witness-grade claimed (chain-class own ps)) ≤ᴳ own
   chain-ceiling claimed own ps =
@@ -141,6 +152,7 @@ module Ceiling (L : MeetSemilattice) where
   -- Формулировка утвердительная, а не через отрицание: для ЛЮБОГО
   -- заявленного результат равен встрече с классом, то есть уже ограничен.
   -- Запрета в коде нет — есть отсутствие места, куда ложь могла бы стать.
+  -- ⟦содержательное⟧
   no-laundering : ∀ claimed cls
                 → witness-grade claimed cls ≡ (witness-grade claimed cls) ⊓ cls
   no-laundering claimed cls

@@ -41,21 +41,27 @@ open import Agda.Builtin.Nat using (Nat; zero; suc; _+_; _*_)
 
 -- Порядок на натуральных: конструктивно, без stdlib.
 data _≤ᴺ_ : Nat → Nat → Set where
+  -- ⟦определение⟧
   z≤n : ∀ {n}             → zero ≤ᴺ n
+  -- ⟦определение⟧
   s≤s : ∀ {m n} → m ≤ᴺ n → suc m ≤ᴺ suc n
 
+-- ⟦определительное⟧
 ≤-refl : ∀ n → n ≤ᴺ n
 ≤-refl zero    = z≤n
 ≤-refl (suc n) = s≤s (≤-refl n)
 
+-- ⟦определительное⟧
 ≤-step : ∀ {m n} → m ≤ᴺ n → m ≤ᴺ suc n
 ≤-step z≤n     = z≤n
 ≤-step (s≤s p) = s≤s (≤-step p)
 
+-- ⟦определительное⟧
 +-mono-r : ∀ k {m n} → m ≤ᴺ n → (k + m) ≤ᴺ (k + n)
 +-mono-r zero    p = p
 +-mono-r (suc k) p = s≤s (+-mono-r k p)
 
+-- ⟦определительное⟧
 m≤m+n : ∀ m n → m ≤ᴺ (m + n)
 m≤m+n zero    n = z≤n
 m≤m+n (suc m) n = s≤s (m≤m+n m n)
@@ -83,53 +89,58 @@ module Core where
 
   open Ev
 
+  -- ⟦определение⟧
   total : Ev → Nat
   total e = w+ e + w- e + k e          -- общий знаменатель
 
+  -- ⟦определение⟧
   lowerN : Ev → Nat                    -- числитель нижней границы
   lowerN e = w+ e
 
+  -- ⟦определение⟧
   upperN : Ev → Nat                    -- числитель верхней границы
   upperN e = w+ e + k e
 
-  -- ⟦содержательное⟧
   -- ── 1. ГРАНИЦЫ УПОРЯДОЧЕНЫ ─────────────────────────────────────────────────
   -- Низ не выше верха — при общем знаменателе достаточно сравнить числители.
+  -- ⟦содержательное⟧
   bounds-ordered : ∀ e → lowerN e ≤ᴺ upperN e
   bounds-ordered e = m≤m+n (w+ e) (k e)
 
-  -- ⟦определительное⟧
   -- ── 2. НИЖНЯЯ ГРАНИЦА ЕСТЬ BELIEF ──────────────────────────────────────────
   -- belief = f·c = (w⁺/w)·(w/(w+k)) = w⁺/(w+k). Числитель тот же самый.
   -- Совместимость не совпадение: гейт, смотревший на belief, смотрел на низ
   -- отрезка — самую осторожную оценку. Ничего не меняется, добавляется верх.
+  -- ⟦определение⟧
   beliefN : Ev → Nat
   beliefN e = w+ e
 
+  -- ⟦определительное⟧
   lower-is-belief : ∀ e → lowerN e ≡ beliefN e
   lower-is-belief e = refl
 
-  -- ⟦определительное⟧
   -- ── 3. ШИРИНА ЕСТЬ ГОРИЗОНТ ────────────────────────────────────────────────
   -- верх − низ = k. В долях: k/(w+k) — то самое `u`, что стояло в шапке
   -- evidence.lisp комментарием со дня основания. Оно перестало быть примечанием.
+  -- ⟦определение⟧
   widthN : Ev → Nat
   widthN e = k e
 
+  -- ⟦определительное⟧
   width-formula : ∀ e → (lowerN e + widthN e) ≡ upperN e
   width-formula e = refl
 
-  -- ⟦содержательное⟧
   -- ── 4. ОТРЕЗОК СУЖАЕТСЯ ────────────────────────────────────────────────────
   -- Ширина в долях есть k/(w+k): числитель постоянен, знаменатель растёт с
   -- каждым свидетельством. Значит доля падает. Здесь — рост знаменателя.
+  -- ⟦определение⟧
   add-evidence : Ev → Ev
   add-evidence e = ev (suc (w+ e)) (w- e) (k e)
 
+  -- ⟦содержательное⟧
   width-shrinks : ∀ e → total e ≤ᴺ total (add-evidence e)
   width-shrinks e = ≤-step (≤-refl (total e))
 
-  -- ⟦определительное⟧
   -- ── 5. ШИРИНА НИКОГДА НЕ НОЛЬ ──────────────────────────────────────────────
   -- При k ≥ 1 отрезок не схлопывается ни при каком конечном свидетельстве.
   -- Это граница Эйн-Соф (c < 1 всегда) и AIKR Ванга — здесь как теорема, а не
@@ -137,6 +148,7 @@ module Core where
   data _<ᴺ_ : Nat → Nat → Set where
     lt : ∀ {m n} → suc m ≤ᴺ n → m <ᴺ n
 
+  -- ⟦определительное⟧
   width-never-zero : ∀ e → suc zero ≤ᴺ k e → zero <ᴺ widthN e
   width-never-zero e p = lt p
 
@@ -148,6 +160,7 @@ module Core where
   data Bool : Set where
     true false : Bool
 
+  -- ⟦определение⟧
   _≤?_ : Nat → Nat → Bool
   zero  ≤? _     = true
   suc _ ≤? zero  = false
@@ -156,6 +169,7 @@ module Core where
   data Verdict : Set where
     passed unreachable reachable : Verdict
 
+  -- ⟦определение⟧
   verdict : Ev → Nat → Verdict
   verdict e θ with θ ≤? lowerN e
   ... | true  = passed                      -- низ достиг порога
@@ -167,11 +181,11 @@ module Core where
   -- ровно три ветви, четвёртой нет. Это не теорема, а свойство определения —
   -- и сказано именно так, чтобы не выдать конструкцию за доказательство.
 
-  -- ⟦содержательное⟧
   -- 🔴 6b. ЧТО ОЗНАЧАЕТ unreachable — и что НЕ означает.
   -- Утверждение: при БОЛЬШЕМ числе свидетельств за низ растёт. Значит вердикт
   -- относится к нынешнему состоянию знания, а не к миру: то, что недостижимо
   -- сейчас, достижимо после новых свидетельств. Первая редакция комментария в
   -- Lisp утверждала обратное («не помогут никакие») и была неверна.
+  -- ⟦содержательное⟧
   unreachable-is-about-now : ∀ e → lowerN e ≤ᴺ lowerN (add-evidence e)
   unreachable-is-about-now e = ≤-step (≤-refl (w+ e))
