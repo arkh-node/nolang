@@ -555,7 +555,37 @@ itself tested for its ability to say no: it catches a deliberately broken `g-mee
 200** programs. That is a strength and a boundary in one number: **roughly a quarter of breakages
 of that shape would pass unnoticed.**
 
-**5. Two things are demonstrations, not measurements.**
+**5. 🔴 The threshold's guarantee rests on exchangeability — and does not survive its loss.**
+`theta-conformal` uses the ledger as a calibration set. That is a real strength: it needs no
+belief in our own numbers, only that past cases are **exchangeable** with future ones. Until now
+this file presented that as a virtue and stopped there. Here is the other half.
+
+Measured (α = 0.1, 200 calibration cases, 200 test cases, threshold 0.420):
+
+| world at decision time | share of false claims passing the gate | |
+|---|---|---|
+| same as calibration | **13.5%** | within finite-sample noise: the guarantee is *marginal*, i.e. on average over draws |
+| mild shift — falsehoods grew more convincing | **66.5%** | 🔴 guarantee void |
+| strong shift | **100%** | 🔴 |
+| adversarial — falsehoods tuned to the threshold | **100%** | 🔴 |
+
+**It does not degrade gracefully. It collapses.** And the dangerous part is not the number: it is
+that **the gate does not know**. Nothing in the machinery notices that the world moved; the
+threshold keeps answering with the same confidence it had when it was calibrated.
+
+This is [Theorem 5](https://arxiv.org/html/2607.22868v1) in the concrete: under representation
+attack a calibrated gate degrades to `E[unsafe] ≤ min{1, δ + H·η̄(ρ)}` — naive calibration gives
+no security boundary.
+
+**What we have against it, honestly:** not a fix, but a *signal*. Since 05.08 a subject records
+its **scene** — horizon, lattice, sources with fingerprints — and re-entry refuses when the scene
+differs. A changed scene is not proof that exchangeability broke, but it is the one observable
+event that usually accompanies it: new sources, a new domain, a different measure. **Refusing to
+continue in a changed scene is the cheapest available guard against a silently stale calibration.**
+The real fix — robust calibration — is not done, and this line says so rather than implying
+otherwise.
+
+**6. Two things are demonstrations, not measurements.**
 The NARS bridge (`src/nars.lisp`) is loaded by its test alone — no module of `src/` pulls it, so
 there is no feedback loop; it is an external adapter, not a stone. And `revgate`'s 5→0 shows the
 mechanism on a fixed input; its own README admits an earlier version "risked fitting the
