@@ -602,11 +602,35 @@ cannot be enforced by an irreversible gate. So the honest reading of *"a breach 
 inexpressible"* is: **inexpressible within the safety class, which is the class irreversibility
 lives in.** The ceiling is not ours; it is proved, and it is the right ceiling for this problem.
 
-**4. The oracle has a blind quarter.**
-1200 random programs against the compiled Agda model, zero divergences — and the harness is
-itself tested for its ability to say no: it catches a deliberately broken `g-meet` on **153 of
-200** programs. That is a strength and a boundary in one number: **roughly a quarter of breakages
-of that shape would pass unnoticed.**
+**4. The oracle bounds divergence by trial count — and the "blind quarter" was our own error.**
+1200 random programs against the compiled Agda model, zero divergences. That bounds divergence by
+the number of trials; it does not prove equivalence, and nothing here should be read as if it did.
+
+The harness is itself tested for its ability to say no. Until 06.08.2026 this section reported
+that it catches a deliberately broken `g-meet` on **153 of 200** programs, and called the
+remainder a *blind quarter* — "roughly a quarter of breakages of that shape would pass unnoticed."
+
+🔴 **That claim was false, and the correction is not a softening.** The harness compares Lisp
+against the oracle, and on the untouched function divergences are **zero** — so the reference
+*is* what intact Lisp produces. Therefore "the harness caught it" ⟺ "the corruption changed the
+output", identically by construction: what is caught cannot be fewer than what is observable.
+
+Measured directly: on those 200 programs the output changes for **153** and does not change for
+**47**. So the harness catches **153 of 153 observable cases — all of them**. On the other 47
+there is nothing to catch: the broken function returns exactly what the intact one returns.
+
+**What those 47 are** — and this is the useful part. Twenty-four of them are programs whose
+single witness has been retracted: every premise is dead, the result falls to bottom by
+construction, and there is nothing left to meet. The rest have one live premise. They cannot be
+removed from the sample — they exercise retraction and bottom, which is a different question —
+but they must not sit in the denominator of *sensitivity* either, because that would measure the
+generator's diversity while claiming to measure the watchman's eyesight. The battery now computes
+both numbers and asserts **equality**, not a threshold.
+
+⚠️ The real limitation this exposes is in the **generator**, not the harness: 12% of the sample is
+inert for this class of corruption. Sensitivity to other breakages — the source ceiling, the gate,
+the ledger — is **not yet measured at all**, and until it is, this section speaks only about
+`g-meet`.
 
 **5. 🔴 The threshold's guarantee rests on exchangeability — and does not survive its loss.**
 `theta-conformal` uses the ledger as a calibration set. That is a real strength: it needs no
