@@ -552,7 +552,7 @@ project keeps catching in itself. They are kept apart:
 | module import (`⊓` preserved) | `ModuleImport` | — | ✅ |
 | representative / copies | `Representative` | — | ✅ |
 | re-entry (replay, not load) | `ReEntry` | — | ✅ `C2_subject`, `V7` |
-| **gate** (θ, permit, outcome) | 🔴 **not proved** | — | ✅ `01_gate`, `99_theta` |
+| **gate** (θ, permit, outcome) | `Gate` ✅ *(added 06.08, see below)* | — | ✅ `01_gate`, `99_theta` |
 | **ledger** (record sequence, refusal as value) | 🔴 **not proved** | — | ✅ `V1`–`V6` |
 | **quantifiers** (`all`, `exists`) | 🔴 **not proved** | — | ✅ `B1_quant`, `G1_query` |
 | **digest / anchor** | 🔴 **not proved** | — | ✅ `D5`, `D6`, `D7` |
@@ -560,10 +560,28 @@ project keeps catching in itself. They are kept apart:
 | **prelude/programme split** (the moment rule) | 🔴 **not proved** | — | ✅ `V3_prelude` |
 | PROV-N export | — (one-way, by design) | — | ✅ `F1_provn` |
 
-🔴 **Read the gaps, not the ticks.** The formal part covers **grades and actions**. The gate — the
-single place where this language commits to something irreversible — is **not in it**, and neither
-is the ledger. Those two are the most load-bearing untested-by-proof parts of the system, and
-saying so plainly is worth more than the twelve rows above it.
+🔴 **Read the gaps, not the ticks.** Drawing this map is what produced `formal/Gate.agda`: ten
+modules and 927 checks stood around a door **nobody had proved anything about**. The gate is the
+one place where computation stops being computation and becomes an act — after it, `publish` has
+happened. Everything else in the language can be replayed; that cannot.
+
+Four theorems now hold there, and one is worth stating in full:
+
+> **Insufficient confidence cannot be compensated by belief.** When `c < θ` the outcome is the
+> *same for every value of `f`* — however strong the conviction, the gate does not open
+> (`low-confidence-ignores-belief`). This is precisely why the gate reads the **pair** `(f,c)`
+> rather than their product: in a product, low confidence is *substituted for* by high belief and
+> the distinction disappears.
+
+The others: irreversible action requires a confident yes and can be reached no other way; rising
+confidence never revokes a yes already given (a non-monotone gate would punish collecting more
+evidence); and `fold-first ≠ denied` — under uncertainty an action is **downgraded to reversible,
+not forbidden**, because refusal here is a value with a shortfall rather than a crash.
+
+⚠️ **What is *not* proved there:** that θ is the *right* threshold. That is a claim about the
+world, and it stays with the human — and with the prelude, which fixes θ before the data.
+
+**The ledger remains unproved**, and it is now the most load-bearing gap left.
 
 **And the oracle column is nearly empty on purpose:** the compiled model computes the *grade*
 (T-CLAIM plus retraction) and nothing else. Everything else in that column would be a lie.

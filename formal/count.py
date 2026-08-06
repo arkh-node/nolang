@@ -29,7 +29,7 @@
 """
 import re, os, glob, sys
 
-SIG  = re.compile(r'^( {0,2})([^ ()|{}·\-][^ ]*) : ')
+SIG  = re.compile(r'^( {0,2})([^ ()|{}·\-][^ ]*) :(?: |$)')
 MARK = re.compile(r'^ {0,2}-- ⟦(содержательное|определительное|определение)⟧\s*$')
 
 def scan(path):

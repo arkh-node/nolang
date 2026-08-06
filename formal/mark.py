@@ -44,7 +44,7 @@ def main():
 
     out, done = [], set()
     for ln in lines:
-        m = re.match(r'^( {0,2})([^ ()|{}·\-][^ ]*) : ', ln)
+        m = re.match(r'^( {0,2})([^ ()|{}·\-][^ ]*) :(?: |$)', ln)
         if m and m.group(2) in want and m.group(2) not in done:
             if not (out and '⟦' in out[-1]):
                 out.append(f"{m.group(1)}-- ⟦{want[m.group(2)]}⟧")

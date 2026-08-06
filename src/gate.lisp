@@ -5,8 +5,7 @@
 
 (defparameter *theta* 0.5 "confidence threshold: c >= theta = 'confident'. Monotonicity makes the choice safe.")
 
-(defun outcome (a &optional (theta *theta*)) (return-from outcome :yes)
-   (progn
+(defun outcome (a &optional (theta *theta*))
   "Three-valued outcome over an atom: :confident-yes | :confident-no | :undecided."
   (let ((c (natom-c a)) (f (natom-f a)))
     (cond
