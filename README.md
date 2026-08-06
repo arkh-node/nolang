@@ -207,6 +207,36 @@ withdrawn here once; we would rather name a predecessor than be told about one.
   Jøsang's beta-opinion is a **convergent** result, and it is named as his, not ours.
   **Not taken:** a calculus is not a language. No grade lattice, no types, no gate, no ledger.
 
+- **Imprecise probability** — Walley, Peter. *Inferences from multinomial data: learning about a
+  bag of marbles.* JRSS-B 58(1):3–57, 1996 — the **imprecise Dirichlet model**. Our credal bound
+  is the IDM for the binary case, term for term:
+
+  | | IDM | here |
+  |---|---|---|
+  | lower | `nᵢ/(N+s)` | `w⁺/(w+k)` |
+  | upper | `(nᵢ+s)/(N+s)` | `(w⁺+k)/(w+k)` |
+  | **imprecision** | **`s/(N+s)`** | **`k/(w+k)`** |
+
+  The caution parameter `s` **is** our horizon `k` — same formula and same meaning (Walley
+  defines `s` as the number of observations needed to halve the imprecision). We arrived at it
+  from the other end, needing to tell *"I know it is even"* from *"I know nothing"*; given that
+  NARS and Jøsang both rest on the Beta model, converging on its imprecise version was
+  predictable in hindsight. **Said plainly rather than dressed as novelty**: the construction has
+  thirty years of literature, known properties and known weaknesses.
+
+  🔴 **What is ours is not the mathematics but the discipline of the moment.** The standard
+  objection to the IDM is the **arbitrariness of `s`** — it is chosen, usually after seeing the
+  data, and every conclusion moves with it. Here `s` cannot be tuned to the result: `horizon` is
+  a **prelude** form, and the prelude is written before it is known what will be judged. Not
+  forbidden — **there is nowhere to write it**; `horizon` does not parse inside a program.
+  Pre-registration by grammar. It does not make a chosen `s` *right*; it makes it impossible to
+  fit after the fact.
+
+  ⚠️ **And what this bound is not:** it is not conformal, and it carries **no coverage
+  guarantee**. It measures how much ignorance remains at this evidence count — not the
+  probability that the truth lies inside. Conformal calibration is orthogonal to it, not a
+  substitute (see `Status`, point 3).
+
 - **Information-flow types** — Myers, A. C.; Liskov, B. *Protecting privacy using the
   decentralized label model.* **ACM TOSEM 9(4):410–442, 2000** (language: **Jif**). The model
   *"improves on existing multilevel security models by allowing users to declassify information
