@@ -137,3 +137,32 @@ witness w : (randomised, abstract) says \"без времени\" source s evide
 "))
     (declare (ignore env))
     (chk (null errs) "время события необязательно — старые программы не сломаны")))
+
+;; ── ЦЕПЬ СУБЪЕКТОВ (D5) ─────────────────────────────────────────────────────
+;; Каждая запись несёт отпечаток предыдущей: подделка звена рвёт цепь на следующем.
+(let* ((chain (let ((prev nil) (out '()))
+                (dotimes (i 3)
+                  (let ((s (with-prelude
+                             (multiple-value-bind (st lg) (run-nolang *forms* :carrier :морф)
+                               (declare (ignore st))
+                               (serialize-subject *forms* lg :carrier :морф :prev prev)))))
+                    (push s out)
+                    (setf prev (subject-digest s))))
+                (nreverse out))))
+  (chk (chain-verify chain) "честная цепь из трёх звеньев цела")
+
+  (let ((bad (copy-tree chain)))
+    (setf (getf (cddr (second bad)) :seal) '((:ran-on :морф nil)))
+    (multiple-value-bind (ok where why) (chain-verify bad)
+      (declare (ignore where))
+      (chk (and (not ok) (eq why :chain-differs))
+           "подделка СРЕДНЕГО звена рвёт цепь на следующем")))
+
+  ;; 🔴 И ЧЕСТНАЯ ГРАНИЦА, записанная проверкой, а не оговоркой в комментарии:
+  ;; последнее звено ничем не подпёрто, его подделку цепь НЕ ловит. Против этого
+  ;; нужен якорь вне системы — чужая подпись или публикация отпечатка.
+  ;; Тест закрепляет именно ЭТО, чтобы никто не решил, будто цепь ловит всё.
+  (let ((bad (copy-tree chain)))
+    (setf (getf (cddr (third bad)) :seal) '((:ran-on :морф nil)))
+    (chk (chain-verify bad)
+         "ГРАНИЦА: подделка ПОСЛЕДНЕГО звена цепью не ловится — нужен внешний якорь")))
