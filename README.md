@@ -529,6 +529,33 @@ rather than by argument: `⊕` is idempotent · "a disagreeing witness always lo
 "the compiler proves `b ≥ θ` on all paths" · the novelty claim above · a theorem count inflated
 by a broken regex · a test that declared a correct method violated on 0.4σ of noise.
 
+## What this language cannot do — in principle
+
+Not a list of unfinished work. **Every line here is a boundary of the method**, and no amount of
+further engineering removes it. They were scattered across module headers, where only someone
+reading the sources would find them; collected here because a reader of the README deserves them
+first, not last.
+
+The distinction matters more than the list: *"not done yet"* invites patience, *"cannot be done"*
+invites a different design. Confusing the two is a quiet lie that surfaces at the worst moment.
+
+| boundary | why it cannot be closed | where it lives |
+|---|---|---|
+| **That recorded premises correspond to the past** | a claim about the **world**, not about a computation; nothing inside the computation can settle it | `formal/ReEntry.agda` header |
+| **That the ledger corresponds to what happened** | `performed` says the language *permitted* an act, not that the world underwent it | `formal/Ledger.agda` header |
+| **The last link of a subject chain** | whoever holds the chain from its first link can build another, equally consistent one; no hash changes this | `src/anchor.lisp`, `ANCHORS.md` |
+| **Independent evidence of *time*** | git timestamps are written by the committer; `:witnessed` is about content, never about when | `ANCHORS.md` |
+| **That θ is the *right* threshold** | a question about the cost of error in the world; the language only enforces the θ that was declared | `formal/Gate.agda` header |
+| **Coverage guarantee for the credal interval** | the bounds come from *counting evidence*, not from calibration on labelled data — it measures remaining ignorance, not the chance of containing the truth | `src/evidence.lisp` |
+| **Equivalence of the Lisp and the proved model** | the oracle bounds divergence by trial count; a proof would require a verified compiler | `test/D1_oracle.lisp` header |
+| **Detecting that the *world* drifted** | what is observable is a change of **scene**; the world can move while the scene stands still, and then the signal is silent — "silent" means "same scene", not "calibration sound" | `src/theta.lisp` |
+| **Liveness properties at an irreversible gate** | *"every `pay` is eventually followed by `confirm`"* is outside the safety class an irreversible gate can enforce — a proved ceiling, not ours | `Status`, point 3 |
+
+🔴 **One rule came out of collecting these**, and it is worth more than the table: **a boundary
+lives where the quantity lives.** The credal interval's caveat existed in this README and was
+*absent* from `evidence.lisp`, where the function is defined — visible to whoever read the prose,
+invisible to whoever read the code. Fixed on 06.08.2026; the same sweep produced this section.
+
 ## Coverage map — what is proved, what is only tested
 
 Three different things get called "checked" here, and conflating them is the failure mode this
@@ -749,13 +776,35 @@ This is [Theorem 5](https://arxiv.org/html/2607.22868v1) in the concrete: under 
 attack a calibrated gate degrades to `E[unsafe] ≤ min{1, δ + H·η̄(ρ)}` — naive calibration gives
 no security boundary.
 
+**Since 06.08.2026 the gate can be asked what its calibration is worth.** `theta-guarded`
+returns the threshold **and a verdict on it in one call** — because the two could previously be
+obtained separately, and that is exactly how the gate ended up confident about a world that no
+longer existed. The verdict is driven by the **share of own-scene cases**, not by whether
+weighting was applied: the measurements showed weighting limits contamination but does not
+substitute for *having* own cases (at 20 own out of 200 the leak was 99.5% unweighted and still
+22.5% weighted). Four outcomes, and `trust` is stated aloud too — a signal audible only in the
+bad case is indistinguishable from a broken one.
+
+⚠️ **This is not a drift detector.** The world can change while the scene stays fixed, and then
+this stays silent. It reports what is *observable*: what past cases were judged by versus what we
+judge by now. "Silent" here means "same scene", not "calibration is sound", and the function says
+exactly that.
+
 **What we have against it, honestly:** not a fix, but a *signal*. Since 05.08 a subject records
 its **scene** — horizon, lattice, sources with fingerprints — and re-entry refuses when the scene
 differs. A changed scene is not proof that exchangeability broke, but it is the one observable
 event that usually accompanies it: new sources, a new domain, a different measure. **Refusing to
 continue in a changed scene is the cheapest available guard against a silently stale calibration.**
-The real fix — robust calibration — is not done, and this line says so rather than implying
-otherwise.
+**And robust calibration is now done**, not merely promised: weighted quantiles after Barber,
+Candès, Ramdas & Tibshirani (*Conformal prediction beyond exchangeability*, Ann. Statist. 51(2),
+2023), with weights driven by **scene change** — an observable event — rather than by recency,
+which only correlates with drift. Where it helps and where it **hurts** is measured and printed
+in `src/theta.lisp`, including the row where it made things worse.
+
+⚠️ This line previously read *"the real fix is not done"*. It was true when written and became
+false without anyone noticing — the mirror image of the mistake this section warns about. Caught
+on 06.08.2026 while sweeping the text for boundaries described as temporary; **a claim can rot in
+either direction, and the stale one that flatters us is the one nobody checks.**
 
 **6. 🔴 The subject chain protects the history, not the last link — and no hash will change that.**
 A serialized subject carries a fingerprint of the previous one, so altering any single record
