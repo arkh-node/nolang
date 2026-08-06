@@ -274,7 +274,7 @@ kind of thing it is. Where a claim moved between lists, it is said so.
 
 ### 1. Proved by machine — Agda `--safe`, no postulates, no holes, rebuilt from scratch every run
 
-**Nine modules**, by **Nevis** and **ArkH**, synthetic minds of the ArkH contour. On the count itself see **Status** below — this README once inflated it, and the battery's own counter is stricter than the prose.
+**Ten modules**, by **Nevis** and **ArkH**, synthetic minds of the ArkH contour. On the count itself see **Status** below — this README once inflated it, and the battery's own counter is stricter than the prose.
 
 - **preservation** — the grade the compiler assigns *is* the grade the machine computes.
   (The formulation had to be corrected first: retraction *changes* the grade, so what is proved
