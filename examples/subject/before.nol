@@ -1,0 +1,17 @@
+; before.nol — ЧТО НАМЕРЯЛИ ДО ПЕРЕРЫВА.
+; Свидетельств не хватает: гейт сворачивает действие и печатает недостачу.
+
+witness first_reading : (randomised, abstract)
+  says "first pass over the abstracts: effect present, magnitude unclear"
+  source conference_abstracts
+  evidence 3 for 1 against
+
+ask contrary_reports
+  in registry, preprints
+  found nothing because "searched the registry and the preprint servers, nothing contrary"
+
+claim effect_holds
+  from first_reading
+  searched contrary_reports
+
+perform publish_guidance on effect_holds

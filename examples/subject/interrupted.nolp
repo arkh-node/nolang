@@ -1,0 +1,21 @@
+; interrupted.nolp — СЦЕНА: чем судим. Пишется до того, как известно, что судят.
+; Демонстрация возврата (этап D): агент прерван на середине и возвращается собой.
+
+horizon 1
+
+lattice design       = observational < randomised
+lattice transmission = unavailable < abstract < published < full_report
+lattice provenance   = design * transmission
+
+source trial_reports : (randomised, full_report)
+  fingerprint "doi:10.0000/demo.trial"
+  says "clinical study reports, read in full"
+
+source conference_abstracts : (randomised, abstract)
+  from trial_reports
+  fingerprint "doi:10.0000/demo.abstracts"
+
+irreversible action publish_guidance
+  needs grade >= (randomised, abstract)
+  gated by belief >= 0.9
+  else fold

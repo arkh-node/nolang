@@ -50,6 +50,13 @@
                             :test #'string=)))
              forms))
 
+(defun subject-diagnostics (forms)
+  "Коды и места диагностики при проверке форм — часть состояния субъекта."
+  (with-prelude
+    (multiple-value-bind (env errs) (check-program forms)
+      (declare (ignore env))
+      (mapcar (lambda (e) (list (terr-code e) (terr-where e))) errs))))
+
 (defun scene-digest (scene)
   "Отпечаток сцены: устойчивая строка из форм, чем судили.
 
@@ -77,13 +84,22 @@
           :scene   scene
           :scene-digest (scene-digest scene)
           :trace   (trace-forms forms)
-          :seal    ledger)))
+          :seal    ledger
+          ;; 🔴 ДИАГНОСТИКА — ЧАСТЬ СОСТОЯНИЯ, А НЕ ПОМЕХА (найдено на демонстрации 05.08).
+          ;; Программа, где гейт не пропустил действие, даёт `GATE-FAIL` — и это НЕ поломка,
+          ;; а честное «порог не достигнут»; машина при этом сворачивает в fold, как велено
+          ;; `else`. Первая редакция re-enter считала расхождением само НАЛИЧИЕ ошибок и
+          ;; отвергала совершенно здоровый субъект, у которого гейт отработал.
+          ;; Сверять надо не «есть ли», а «те же ли»: подделка, меняющая диагностику,
+          ;; ловится ровно так же, как подделка печати.
+          :diagnostics (subject-diagnostics forms))))
 
 (defun subject-scene (s)   (getf (cddr s) :scene))
 (defun subject-trace (s)   (getf (cddr s) :trace))
 (defun subject-seal (s)    (getf (cddr s) :seal))
 (defun subject-carrier (s) (getf (cddr s) :carrier))
 (defun subject-scene-digest (s) (getf (cddr s) :scene-digest))
+(defun subject-diagnostics-of (s) (getf (cddr s) :diagnostics))
 
 ;;; ── ВОЗВРАТ ────────────────────────────────────────────────────────────────
 
@@ -100,7 +116,10 @@
      :scene-differs  — сцена не сходится с объявленным отпечатком ЛИБО не складывается вовсе:
                        это не тот же субъект, продолжающий работу, а другой, читающий чужой
                        журнал. Проверяется ПЕРВЫМ и отдельно от вывода;
-     :trace-differs  — посылки не типизируются в этой сцене;
+     :trace-differs  — диагностика разошлась: то, на что компилятор ругался тогда, и то, на
+                       что ругается теперь, — разные вещи. Само НАЛИЧИЕ диагностики (например
+                       `GATE-FAIL` при свёрнутом действии) расхождением НЕ считается: это часть
+                       здорового состояния, а не поломка;
      :seal-differs   — посылки те же, вывод другой. Либо подделана печать, либо изменилось
                        то, на что посылки опираются. И то и другое — повод остановиться."
   ;; 🔴 СНАЧАЛА сцена, потом воспроизведение. Порядок несущий: сцена есть то, ЧЕМ судят,
@@ -113,13 +132,15 @@
         (with-prelude
           (multiple-value-bind (env errs) (check-program forms)
             (declare (ignore env))
-            (if errs
-                (values nil nil :trace-differs)
-                (multiple-value-bind (store lg) (run-nolang forms :carrier (subject-carrier s))
-                  (declare (ignore store))
-                  (if (ledger-equal lg (subject-seal s))
-                      (values t lg nil)
-                      (values nil lg :seal-differs))))))
+            (let ((now (mapcar (lambda (e) (list (terr-code e) (terr-where e))) errs))
+                  (was (subject-diagnostics-of s)))
+              (if (not (equal now was))
+                  (values nil nil :trace-differs)
+                  (multiple-value-bind (store lg) (run-nolang forms :carrier (subject-carrier s))
+                    (declare (ignore store))
+                    (if (ledger-equal lg (subject-seal s))
+                        (values t lg nil)
+                        (values nil lg :seal-differs)))))))
       (error () (values nil nil :scene-differs)))))
 
 (defun subject-write (s path)

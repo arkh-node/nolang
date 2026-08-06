@@ -1,0 +1,27 @@
+; after.nol — ПОСЛЕ ПЕРЕРЫВА. Первая форма — возврат, и никакая иначе.
+;
+; Прежние посылки подставляются целиком и прогоняются заново: новое свидетельство
+; спорит со старым НА РАВНЫХ, а не встречается с готовым выводом. Прошлое остаётся
+; оспоримым — в этом весь смысл, и в этом цена (прогон длиннее).
+;
+; 🔴 МОЛЧАНИЕ НЕ ВОСКРЕСАЕТ. Прежний охват (`contrary_reports`) уже потреблён тем
+; claim'ом, что был до перерыва: молчание линейно. Опираешься снова — спрашивай
+; снова. Это не неудобство, а точная семантика: охват поиска относится к моменту,
+; и «мы искали полгода назад» не есть «мы искали».
+
+continue from "/tmp/interrupted.subject"
+
+witness full_reports : (randomised, full_report)
+  says "the study reports themselves, obtained after the interruption"
+  source trial_reports
+  evidence 60 for 1 against
+
+ask contrary_now
+  in registry, preprints, trial_registry
+  found nothing because "searched again after the interruption: still nothing contrary"
+
+claim effect_holds_now
+  from first_reading, full_reports
+  searched contrary_now
+
+perform publish_guidance on effect_holds_now
