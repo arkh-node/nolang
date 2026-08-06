@@ -647,10 +647,22 @@ into "diverge from someone else's record". Two things about it are worth stating
   not accepted-with-a-note, because notes go unread. Only `:witnessed` (a second party holds a
   copy) and `:notarised` (independent evidence of *time*) count.
 
-🔴 **And the part that is not done is not the code.** No channel is chosen and no digest has
-actually been published, so the protection currently in force is **zero links of zero**. The
-machinery is written so that choosing a channel changes data, not code — but until a digest is
-out there, this section describes a capability, not a defence.
+**Since 06.08.2026 a digest is actually published** — `ANCHORS.md`, class `:witnessed`, the
+witness being this repository's own history as mirrored by every clone, fork and cache. Anyone can
+check it without trusting us:
+
+```bash
+git clone https://github.com/arkh-node/nolang.git && cd nolang
+./anchor_verify.sh          # recomputes from your clone; also runs inside the battery as D7
+```
+
+⚠️ **It is `:witnessed`, not `:notarised`.** Git timestamps are written by the committer, so the
+row carries independent evidence of **content** and none of **time**. Saying otherwise would forge
+precisely the thing an anchor exists to establish.
+
+⚠️ **And it covers one subject, not the repository.** The anchored digest is the demonstration
+subject in `test/subject/`; everything committed after that row is still governed by *"forgery is
+never local"* alone. An anchor witnesses the past, never the future.
 
 **7. Two things are demonstrations, not measurements.**
 The NARS bridge (`src/nars.lisp`) is loaded by its test alone — no module of `src/` pulls it, so
