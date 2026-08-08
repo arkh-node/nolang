@@ -645,12 +645,36 @@ Until 05.08.2026 the line above read *"Five modules, 51 theorems"*. There are no
 and `formal/count.sh` — the project's own counter — reports something the prose did not:
 
 ```
-CONTENTFUL (about the subject matter):  57
-DEFINITIONAL (rungs, not theorems):     83
-DEFINITIONS (nothing to mark):          96
+CONTENTFUL (about the subject matter):  57   ← after a second gate, down from 65
+DEFINITIONAL (rungs, not theorems):    101
+DEFINITIONS (nothing to mark):         110
 UNMARKED:                                0
-sum of kinds + debt = 236 = number of signatures ✓
+sum of kinds + debt = 268 = number of signatures ✓
 ```
+
+🔴 **The 57 survived an adversarial second pass — and eight did not.** On 07.08.2026 Nevis read
+the count and made a distinction sharper than mine: the *bookkeeping* is honest and
+self-checking, but the *semantic* split cannot be guaranteed by any script — under Curry–Howard
+the boundary is undecidable, so it rests on the author's hand. Her verdict: "one module ≠ all 65".
+
+So every contentful claim was put through her **Law XII** — does the proof *consume hypotheses*,
+is it provable as `id`, and **what breaks in reality if it is false**. The first two are checkable
+by machine (`formal/gate2.py`); the third is not — it is a claim about consequences, not about
+text, and it was answered by reading.
+
+**Eight were demoted**, and the most instructive is this: `perm-blind-grade` turned out to be
+**`unauthorized-on-revoke` under a different name** — same type, body literally `= unauthorized-on-revoke`.
+One theorem had been counted twice. Others: a claim of the form `Typed b a → Typed b a` proved by
+`= t`, which is literally `id`; a hypothesis that was *ignored* in the proof (`_ = refl`) and so
+decorative; and several true-by-definition rungs.
+
+⚠️ **And the detector itself was wrong twice, in both directions.** Its first version flagged 38
+of 65 — including `preservation`, the central theorem — because "consumes no hypotheses" is a bad
+criterion for statements of the form `∀ x → f x ≡ g x` where `f` and `g` are defined
+independently: those carry content precisely by relating two computations. Its second version
+missed `rewrite`, reading `f x p rewrite p = refl` as a trivial `refl` when the hypothesis is
+consumed by the rewriting. Both are the same failure this project keeps finding in itself: **a
+measure that does not measure the quantity it names.**
 
 236 module-level statements typecheck under `--safe`. **As of 06.08.2026 every one of them
 carries a verdict** — the debt that stood at 221 is closed.

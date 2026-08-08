@@ -326,14 +326,14 @@ module WithLattice (L : MeetSemilattice) where
   -- того, что `Typed` не упоминает `Revoked` вовсе — и именно эта немота есть
   -- содержание теоремы, а не её слабость: право не может ни поднять, ни уронить
   -- степень основания. (Он спрашивал: следствие это или моё решение. Следствие.)
-  -- ⟦содержательное⟧
+  -- ⟦определительное⟧
   revoke-keeps-typing : ∀ (b : G) (rv rv′ : Revoked) (a : Action)
                       → Typed b a → Typed b a
   revoke-keeps-typing b rv rv′ a t = t
 
   -- ТЕОРЕМА 9 (perm-blind-grade). И обратное: требование к степени ничего не
   -- говорит о праве. Действие с любым `req` может оказаться неправомерным.
-  -- ⟦содержательное⟧
+  -- ⟦определительное⟧
   perm-blind-grade : ∀ (d : Dead) (rv : Revoked) (a : Action)
                    → noneAlive d (supp a) ≡ false
                    → permAlive rv (perm a) ≡ false

@@ -95,7 +95,7 @@ module Ceiling (L : MeetSemilattice) where
   -- Если заявлено не выше класса, результат равен заявленному.
   -- Без этого «починка» свелась бы к запрету всего: потолок обязан
   -- пропускать правду, иначе он не потолок, а глушилка.
-  -- ⟦содержательное⟧
+  -- ⟦определительное⟧
   honest-preserved : ∀ claimed cls → claimed ≤ᴳ cls
                    → witness-grade claimed cls ≡ claimed
   honest-preserved claimed cls le = le

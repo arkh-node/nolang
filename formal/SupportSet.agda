@@ -259,7 +259,7 @@ module WithWeights (weight : Root → E) where
   direct : Support → Support → Support
   direct sw1 sw2 = sw1 ∪ sw2
 
-  -- ⟦содержательное⟧
+  -- ⟦определительное⟧
   derived≡direct : ∀ (n : Nat) (sa sb : Support)
                  → massUpTo n (derived sa sb) ≡ massUpTo n (direct sa sb)
   derived≡direct n sa sb = refl
