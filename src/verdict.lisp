@@ -175,6 +175,25 @@
                        Это НЕ вердикт языка: судить не удалось.~%" e)
       (values :сбой (format nil "~a" (type-of e))))))
 
+(defun judge-source (src &key require prelude-src)
+  "R0 (сервис): прогон ИСХОДНИКА-строки → (values род причина ledger errs). Та же ЛИНИЯ
+   разделяемых функций, что judge-file (compile-with-prelude/compile-nolang → run-nolang →
+   program-verdict) — без файла и без человекочитаемого вывода. Семантика живёт в этих
+   функциях, здесь только оркестровка, поэтому это НЕ вторая истина."
+  (handler-case
+      (multiple-value-bind (forms errs)
+          (if (and prelude-src (plusp (length prelude-src)))
+              (compile-with-prelude prelude-src src)
+              (compile-nolang src))
+        (multiple-value-bind (store ledger) (run-nolang forms :carrier :морф)
+          (declare (ignore store))
+          (multiple-value-bind (kind why) (program-verdict errs ledger :require require)
+            (values kind why ledger errs))))
+    (nol-syntax-error (e)
+      (values :отклонено (format nil "синтаксис, строка ~a" (nol-line e)) nil nil))
+    (error (e)
+      (values :сбой (format nil "~a" (type-of e)) nil nil))))
+
 (defun judge-and-exit (path &key require prelude)
   "Точка входа для скрипта: судит и ВЫХОДИТ кодом рода. Единственное место с sb-ext:exit —
    чтобы не было второго пути наружу, дающего 0 в обход вердикта."

@@ -1,0 +1,32 @@
+; composition.nol — ПРОГРАММА на v1-композиции: правило собрано из под-правила.
+; strong_case(a,b) — свидетельство крепкое, если два источника; verdict — плюс отсутствие спора.
+; verdict(a,b,c) ссылается на strong_case(a,b): функция суждения из функции суждения.
+
+lattice provenance = silence < image < tradition < strict
+
+witness report-a : strict
+  says "источник A: эффект есть"
+  source trial-a
+  evidence 8 for 1 against
+
+witness report-b : strict
+  says "источник B: направление то же"
+  source trial-b
+  evidence 6 for 1 against
+
+witness reg-check : strict
+  says "реестр противопоказаний чист"
+  source registry
+  evidence 4 for 0 against
+
+rule strong_case(a, b) concludes from a, b
+rule verdict(a, b, c) concludes from strong_case(a, b), c
+
+claim solid : strict = verdict(report-a, report-b, reg-check)
+
+irreversible action publish
+  needs grade >= strict
+  gated by belief >= 0.7
+  else fold
+
+perform publish on solid
