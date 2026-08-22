@@ -41,3 +41,13 @@
                 (%make-natom :judgment query-judgment :f f :c c :trace "nars:output")
                 (%make-natom :judgment query-judgment :f 0.5 :c 0.1 :trace "nars:no-answer")))
           (%make-natom :judgment query-judgment :f 0.5 :c 0.1 :trace "nars:no-answer")))))
+
+;;;; Э2/Ш2.3 (15.08.2026) — обратная связь NARS→(f,c) в решающий путь.
+;;;; NARS как НЕЗАВИСИМЫЙ корень: выводит то же суждение из фактов своей цепочкой,
+;;;; ревизуем его в исходный атом (c растёт по РАЗНОМУ корню — t-revise/revise-atoms).
+(defun nars-revise (judgment-atom facts)
+  "NARS-feedback: вывести суждение judgment-atom из facts через NARS и ревизовать как
+   НЕЗАВИСИМЫЙ корень (c растёт). Возвращает ревизованный атом.
+   🔴 Честная граница: revise-atoms суммирует свидетельства как НЕЗАВИСИМЫЕ. Корректно, только
+   если цепочка NARS и цепочка исходного атома РАЗНЫЕ (нет общего свидетеля) — иначе двойной счёт."
+  (revise-atoms judgment-atom (nars-ask facts (natom-judgment judgment-atom))))

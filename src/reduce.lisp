@@ -444,6 +444,17 @@
         ((string= h "do")
          (multiple-value-bind (st lg) (red-do form store ledger (cfg-done c))
            (к st pend lg)))
+        ((string= h "seq")
+         ;; ПОСЛЕДОВАТЕЛЬНОСТЬ (G2): каждое следующее только при :performed предыдущего;
+         ;; :folded → стоп, дальнейшие помечаются :skipped. Конечно, без циклов (§5-bis).
+         (let ((st store) (lg ledger) (stop nil))
+           (dolist (d (cdr form))
+             (if stop
+                 (setf lg (cons (list :skipped (second d) (third d)) lg))
+                 (multiple-value-bind (s2 l2) (red-do d st lg (cfg-done c))
+                   (setf st s2 lg l2)
+                   (when (eq (first (first lg)) :folded) (setf stop t)))))
+           (к st pend lg)))
         ;; ── 🔴 R-REVOKE: ЧЕТВЁРТЫЙ СТАТУС ─────────────────────────────────
         ;; Отзыв разрешения НЕ трогает склад: основание цело, вера прежняя, свидетели живы.
         ;; Меняется единственное — ПРАВО. Совершённое действие, чьё разрешение отозвано,

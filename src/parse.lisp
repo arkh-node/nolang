@@ -588,8 +588,33 @@
 ;;; Это тот же ход, что и всюду: не проверять правила на добросовестность, а не дать им солгать.
 (defvar *rules* '() "Имя правила → (параметры формы-посылок формы-обзора).")
 
+;; Композиция v1 (16.08.2026) — посылка правила: параметр ИЛИ применение ДРУГОГО правила
+;; имя(арг,…). Ссылаться можно только на РАНЕЕ определённое правило (оно уже в *rules*),
+;; поэтому граф ацикличен по построению: само-ссылка и ссылка-вперёд отвергаются, а
+;; ацикличность ⇒ раскрытие конечно ⇒ гейт разрешим (§5-bis, законы 1–2).
+(defun p-premise (what)
+  "Посылка: ident (параметр) | ident(ident,…) (применение под-правила)."
+  (let ((id (eat-ident what)))
+    (if (punct? "(")
+        (progn
+          (advance)
+          (let ((args (ident-list "аргумент под-правила")))
+            (eat-punct ")")
+            (unless (assoc id *rules*)
+              (serr "правило-посылка ~a не определено ВЫШЕ. Ссылаться можно только на уже~%  ~
+                     объявленное правило — тогда граф ацикличен и раскрытие конечно; иначе~%  ~
+                     гейт стал бы неразрешим (§5-bis). Само-ссылка и ссылка вперёд запрещены." id))
+            (list :apply id args)))
+        id)))
+
+(defun premise-list (what)
+  "посылка (, посылка)* — каждая либо параметр, либо применение под-правила."
+  (let ((out (list (p-premise what))))
+    (loop while (punct? ",") do (advance) (push (p-premise what) out))
+    (nreverse out)))
+
 (defun p-rule ()
-  ;; rule ИМЯ(п₁, п₂, …) concludes from п₁, п₂ [searched п₃]
+  ;; rule ИМЯ(п₁, п₂, …) concludes from п₁, п₂ [searched п₃]  |  from подправило(п₁), …
   (eat-word "rule")
   (let ((name (eat-ident "имя правила")) params from searched)
     (eat-punct "(")
@@ -601,13 +626,21 @@
              размножилась бы по всем употреблениям. Уберите «: степень»."))
     (eat-word "concludes" "правило обязано сказать, что оно выводит")
     (eat-word "from" "…и из чего: перечислите параметры")
-    (setf from (ident-list "посылка"))
+    (setf from (premise-list "посылка"))
     (when (word? "searched") (advance) (setf searched (ident-list "молчание")))
-    (dolist (x (append from searched))
-      (unless (member x params)
-        (serr "правило ~a использует ~a, которого нет среди его параметров.~%  ~
-               Правило замкнуто на свои параметры: тянуть свидетеля из окружения значило бы~%  ~
-               прятать посылку от читателя." name x)))
+    (labels ((closed (x)
+               (if (and (consp x) (eq (car x) :apply))
+                   (dolist (a (third x))
+                     (unless (member a params)
+                       (serr "правило ~a: аргумент ~a под-правила ~a не среди параметров.~%  ~
+                              Правило замкнуто на свои параметры — под-правилу можно передать~%  ~
+                              только их, не свидетеля из окружения." name a (second x))))
+                   (unless (member x params)
+                     (serr "правило ~a использует ~a, которого нет среди его параметров.~%  ~
+                            Правило замкнуто на свои параметры: тянуть свидетеля из окружения~%  ~
+                            значило бы прятать посылку от читателя." name x)))))
+      (dolist (x from) (closed x))
+      (dolist (x searched) (closed x)))
     (push (list name params from searched) *rules*)
     `(rule ,name ,params ,from ,searched)))
 
@@ -620,9 +653,20 @@
       (unless (= (length params) (length args))
         (serr "правило ~a ждёт ~a посылок, дано ~a — ~a"
               name (length params) (length args) where))
-      (let ((sub (mapcar #'cons params args)))
-        (values (mapcar (lambda (x) (cdr (assoc x sub))) from)
-                (mapcar (lambda (x) (cdr (assoc x sub))) searched))))))
+      (let ((sub (mapcar #'cons params args))
+            (ff '()) (ss '()))
+        (dolist (x from)
+          (if (and (consp x) (eq (car x) :apply))
+              ;; применение под-правила: подставить его аргументы и раскрыть РЕКУРСИВНО
+              ;; (конечно — граф ацикличен по построению, см. p-premise)
+              (destructuring-bind (kw rname rargs) x
+                (declare (ignore kw))
+                (let ((actual (mapcar (lambda (a) (cdr (assoc a sub))) rargs)))
+                  (multiple-value-bind (sf sr) (expand-rule rname actual where)
+                    (setf ff (append ff sf) ss (append ss sr)))))
+              (setf ff (append ff (list (cdr (assoc x sub)))))))
+        (setf ss (append ss (mapcar (lambda (x) (cdr (assoc x sub))) searched)))
+        (values ff ss)))))
 
 (defun p-revoke ()
   ;; revoke permission from ИМЯ because "…"
@@ -646,11 +690,20 @@
     `(retract ,w :reason ,(eat-str "причина отзыва"))))
 
 (defun p-perform ()
-  ;; perform ИМЯ on ИМЯ
+  ;; perform X on A [then perform Y on B …] — ПОСЛЕДОВАТЕЛЬНОСТЬ (G2). Каждое следующее
+  ;; исполняется ТОЛЬКО при :performed предыдущего; при :folded — стоп. Список конечен,
+  ;; циклов нет ⇒ завершаемо (§5-bis: гейт выносит решение).
   (eat-word "perform")
-  (let ((a (eat-ident "действие")))
-    (eat-word "on" "действие совершается НА основании — назовите его")
-    `(do ,a ,(eat-ident "основание"))))
+  (labels ((one ()
+             (let ((a (eat-ident "действие")))
+               (eat-word "on" "действие совершается НА основании — назовите его")
+               (list 'do a (eat-ident "основание")))))
+    (let ((first (one)) (rest '()))
+      (loop while (word? "then") do
+        (advance)
+        (eat-word "perform" "после `then` — снова perform: последовательность действий")
+        (push (one) rest))
+      (if rest (list* 'seq first (nreverse rest)) first))))
 
 
 ;;; ── ПРЕДЪЯВЛЕНИЕ ПРАВА ──────────────────────────────────────────────────────

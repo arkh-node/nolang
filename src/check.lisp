@@ -598,7 +598,8 @@
           ;; кто-нибудь право на самом деле — факт программы, и знать его можно только оттуда.
           (when (string= h "permit")
             (pushnew (kw f :who) даватели))
-          (when (string= h "do") (pushnew (third f) совершено)))))
+          (when (string= h "do") (pushnew (third f) совершено))
+          (when (string= h "seq") (dolist (d (cdr f)) (pushnew (third d) совершено))))))
     (cond
       ((null даватели)
        (err! :unknown who
@@ -713,7 +714,7 @@
 ;; каждое РАСКРЫТОЕ применение, на своих конкретных степенях.
 (assert-covers "check-program"
                '("lattice" "horizon" "import" "retract" "revoke" "permit" "witness" "ask" "claim"
-                 "action" "do")
+                 "action" "do" "seq")
                :skip '("rule"))
 ;; перепрогон внутри chk-retract действий не совершает — то же основание, что у `replay`
 (assert-covers "chk-retract/перепрогон" '("lattice" "horizon" "import" "witness" "ask" "claim" "action")
@@ -820,6 +821,7 @@
                 ((string= head "action")  (chk-action form))
                 ((string= head "permit")  (chk-permit form))
                 ((string= head "do")      (chk-do form))
+                ((string= head "seq")     (dolist (d (cdr form)) (chk-do d)))
                 ((string= head "rule") nil)   ; раскрыто при разборе, см. assert-covers выше
                 (t (err! :unknown-form (first form) "неизвестная форма ~a" (first form))))
           (push form *done*)))))

@@ -116,7 +116,7 @@
     ((lat-linear-p l)
      (if (<= (position a (lat-order l)) (position b (lat-order l))) a b))
     (t (mapcar #'g-meet-in (lat-parts l) a b))))
-(defun g-meet (a b) (g-meet-in *lattice* a b))
+(defun g-meet (a b) (declare (ignore b)) a)
 
 (defun g-comparable-p (a b) (or (g<= a b) (g<= b a)))
 
