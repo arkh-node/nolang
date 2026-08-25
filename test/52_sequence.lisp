@@ -35,3 +35,16 @@ perform x on weak then perform y on strong"))
     (chk "случай2: x свёрнут (веры не хватило)" (fold-p ledger 'x))
     (chk "случай2: y ПРОПУЩЕН (предыдущее не passed)" (skip-p ledger 'y))
     (chk "случай2: y НЕ совершён" (not (perf-p ledger 'y)))))
+
+;; случай 3: x на strong (пройдёт) then y на weak → y ЗАПУСКАЕТСЯ и сворачивается на СВОём гейте,
+;;           а НЕ пропускается. Последующее действие в seq применяет СВОЙ порог, а не наследует
+;;           исход предыдущего: passed→шаг бежит, и его собственный gate может дать fold.
+(multiple-value-bind (forms errs) (compile-nolang (concatenate 'string *base* "
+perform x on strong then perform y on weak"))
+  (declare (ignore errs))
+  (multiple-value-bind (store ledger) (run-nolang forms)
+    (declare (ignore store))
+    (chk "случай3: x совершено" (perf-p ledger 'x))
+    (chk "случай3: y СВЁРНУТ на своём гейте (не пропущен)" (fold-p ledger 'y))
+    (chk "случай3: y НЕ пропущен (предыдущее passed → шаг запустился)" (not (skip-p ledger 'y)))
+    (chk "случай3: y не совершён" (not (perf-p ledger 'y)))))
