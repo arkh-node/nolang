@@ -1,4 +1,4 @@
-(load "/srv/langs/nolang/src/verdict.lisp")
+(load (merge-pathnames "../src/verdict.lisp" *load-pathname*))
 (defun chk (name pred) (format t "~&~:[FAIL~;OK~] ~a~%" pred name))
 (defun perf-p (ledger act)
   (find-if (lambda (e) (and (eq (first e) :performed) (same-name-p (second e) act))) ledger))

@@ -1,4 +1,4 @@
-(load "/srv/langs/nolang/src/parse.lisp")
+(load (merge-pathnames "../src/parse.lisp" *load-pathname*))
 
 (defparameter *prog* "
 lattice provenance = silence < image < tradition < strict
