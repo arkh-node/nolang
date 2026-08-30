@@ -17,3 +17,4 @@ examples/evidence-gate.nol	verdict	5	-	examples/evidence-gate.nolp	корень 
 examples/pharmacology.nol	verdict	1	-	examples/pharmacology.nolp	закупка требует [испытание·публикация], основание имеет [наблюдение·недоступно]. Язык НЕ ДАЁТ записать закупку на пресс-релизе: отклонение и есть результат
 examples/sexp/migration.nol	sexp	0	-	-	ранний слой (s-выражения): трёхзначный гейт на атомах. Вычисляет, а не судит — вердикта у этого носителя нет
 examples/sexp/subject.nol	sexp	0	-	-	ранний слой: неуверенность НЕ угадывает, а уходит на другую проверку (:route, :fold-first)
+examples/composition.nol	verdict	0	-	-	композиция: правило собрано из под-правила, вера 0.857 ≥ 0.7 — PUBLISH разрешён и исполнен; охват не заявлен, и журнал это показывает
