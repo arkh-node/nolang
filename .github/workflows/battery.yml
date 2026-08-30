@@ -1,0 +1,41 @@
+# nolang CI — the full battery, unmodified (issue #20).
+#
+# Why the dev-machine toolchain, not a leaner job: run_tests.sh treats a skipped
+# check as a failure by design. The battery needs sbcl (lisp + mutants), agda
+# (formal section), ghc (the oracle builds itself via MAlonzo), python3
+# (formal/count.sh). Installing the same distribution as the dev machine
+# (Debian 13, trixie) keeps apt package versions identical to local.
+name: battery
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: battery-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  battery:
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    timeout-minutes: 45
+    env:
+      LANG: C.UTF-8
+    steps:
+      - name: Install toolchain (same apt versions as the dev machine)
+        run: |
+          apt-get update -qq
+          env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git sbcl agda ghc python3
+
+      - uses: actions/checkout@v4
+
+      - name: Register the Agda standard library (apt lands it in /usr/share/agda-stdlib)
+        run: |
+          mkdir -p "$HOME/.agda"
+          echo /usr/share/agda-stdlib/standard-library.agda-lib > "$HOME/.agda/libraries"
+          echo standard-library > "$HOME/.agda/defaults"
+
+      - name: Full battery — skips are failures, by design
+        run: ./run_tests.sh
